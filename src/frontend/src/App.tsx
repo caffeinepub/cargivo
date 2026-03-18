@@ -7,6 +7,7 @@ import { AdminDashboard } from "@/pages/AdminDashboard";
 import { CustomerDashboard } from "@/pages/CustomerDashboard";
 import { InvoicePage } from "@/pages/InvoicePage";
 import { LandingPage } from "@/pages/LandingPage";
+import { LoginPage } from "@/pages/LoginPage";
 import { useEffect, useState } from "react";
 
 function useRouter() {
@@ -51,16 +52,14 @@ export default function App() {
 
   const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
 
-  // Prevent flash: wait for identity + profile check
   const showOnboarding =
     isAuthenticated && profileFetched && !profileLoading && profile === null;
 
-  // Route to proper dashboard after login
   useEffect(() => {
     if (!isAuthenticated) return;
     if (profileLoading || adminLoading) return;
-    if (profile === null) return; // waiting for onboarding
-    if (path === "/" || path === "") {
+    if (profile === null) return;
+    if (path === "/" || path === "" || path === "/login") {
       navigate(isAdmin ? "/admin" : "/dashboard");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,7 +77,6 @@ export default function App() {
     return <AppLoader />;
   }
 
-  // Invoice route
   const invoiceMatch = path.match(/^\/invoice\/(.+)$/);
   if (invoiceMatch) {
     if (!isAuthenticated) {
@@ -121,7 +119,15 @@ export default function App() {
     );
   }
 
-  // Landing
+  if (path === "/login") {
+    return (
+      <>
+        <LoginPage onNavigate={navigate} />
+        <Toaster richColors />
+      </>
+    );
+  }
+
   return (
     <>
       <LandingPage onNavigate={navigate} onLogin={login} />

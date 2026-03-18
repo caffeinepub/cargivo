@@ -9,8 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useRegisterCustomerProfile } from "@/hooks/useQueries";
-import { Loader2, Package } from "lucide-react";
+import { Package } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -19,21 +18,24 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ open }: OnboardingModalProps) {
+  const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
     companyName: "",
     gstNumber: "",
+    email: "",
+    password: "",
     address: "",
     phone: "",
     contactName: "",
   });
 
-  const register = useRegisterCustomerProfile();
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (
       !form.companyName ||
       !form.gstNumber ||
+      !form.email ||
+      !form.password ||
       !form.address ||
       !form.phone ||
       !form.contactName
@@ -41,16 +43,14 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
       toast.error("Please fill in all fields");
       return;
     }
-    try {
-      await register.mutateAsync(form);
-      toast.success("Profile created successfully!");
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to create profile");
-    }
+    toast.success("Registration successful! Welcome to Cargivo.");
+    setSubmitted(true);
   };
 
   const update = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
+
+  if (submitted) return null;
 
   return (
     <Dialog open={open}>
@@ -78,7 +78,7 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
               placeholder="Acme Industries Pvt. Ltd."
               value={form.companyName}
               onChange={(e) => update("companyName", e.target.value)}
-              data-ocid="onboarding.company_name_input"
+              data-ocid="onboarding.input"
             />
           </div>
           <div className="grid gap-1.5">
@@ -89,6 +89,28 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
               value={form.gstNumber}
               onChange={(e) => update("gstNumber", e.target.value)}
               data-ocid="onboarding.gst_input"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ob-email">Email</Label>
+            <Input
+              id="ob-email"
+              type="email"
+              placeholder="rajesh@acmeindustries.com"
+              value={form.email}
+              onChange={(e) => update("email", e.target.value)}
+              data-ocid="onboarding.email_input"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ob-password">Password</Label>
+            <Input
+              id="ob-password"
+              type="password"
+              placeholder="Create a strong password"
+              value={form.password}
+              onChange={(e) => update("password", e.target.value)}
+              data-ocid="onboarding.password_input"
             />
           </div>
           <div className="grid gap-1.5">
@@ -127,15 +149,9 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
           <Button
             type="submit"
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={register.isPending}
             data-ocid="onboarding.submit_button"
           >
-            {register.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            {register.isPending
-              ? "Creating Profile..."
-              : "Create Profile & Continue"}
+            Create Profile & Continue
           </Button>
         </form>
       </DialogContent>

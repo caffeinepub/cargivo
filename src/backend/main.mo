@@ -78,6 +78,7 @@ actor {
     address : Text;
     phone : Text;
     contactName : Text;
+    email : Text;
   };
 
   type QuoteRequestArgs = {
@@ -137,14 +138,13 @@ actor {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can register profiles");
     };
-    let email = "verified@example.com";
     let profile : CustomerProfile = {
       companyName = args.companyName;
       gstNumber = args.gstNumber;
       address = args.address;
       phone = args.phone;
       contactName = args.contactName;
-      email;
+      email = args.email;
     };
     customerProfiles.add(caller, profile);
   };

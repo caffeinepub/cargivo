@@ -276,7 +276,6 @@ function NewRequestForm() {
             <SelectValue placeholder="Select box type..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Metal">Metal</SelectItem>
             <SelectItem value="Wooden">Wooden</SelectItem>
             <SelectItem value="Plastic">Plastic</SelectItem>
             <SelectItem value="Custom">Custom</SelectItem>
