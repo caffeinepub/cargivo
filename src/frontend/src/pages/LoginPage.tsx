@@ -109,7 +109,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
               className="text-primary font-semibold hover:underline"
               data-ocid="login.register_link"
             >
-              Register Free
+              Signup
             </button>
           </p>
         </div>

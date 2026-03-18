@@ -297,7 +297,7 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
                 className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 glow-orange"
                 data-ocid="register.submit_button"
               >
-                Register Free
+                Signup
               </Button>
             </div>
           </form>
@@ -363,7 +363,7 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                   data-ocid="landing.register_button"
                 >
-                  Register Free
+                  Signup
                 </Button>
               </>
             )}
