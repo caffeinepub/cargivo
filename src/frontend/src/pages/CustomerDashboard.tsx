@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ import {
   Package,
   PackageCheck,
   Plus,
+  RefreshCw,
   TrendingUp,
   Upload,
   User,
@@ -61,6 +63,34 @@ interface CustomerDashboardProps {
   emailProfile?: CustomerProfile;
   onEmailLogout?: () => void;
 }
+
+interface FormState {
+  boxType: string;
+  length: string;
+  width: string;
+  height: string;
+  quantity: string;
+  pincode: string;
+  state: string;
+  city: string;
+  landmark: string;
+  building: string;
+  shopNo: string;
+}
+
+const emptyForm: FormState = {
+  boxType: "",
+  length: "",
+  width: "",
+  height: "",
+  quantity: "",
+  pincode: "",
+  state: "",
+  city: "",
+  landmark: "",
+  building: "",
+  shopNo: "",
+};
 
 function QuoteDetailModal({
   request,
@@ -210,16 +240,21 @@ function QuoteDetailModal({
   );
 }
 
-function NewRequestForm() {
-  const [form, setForm] = useState({
-    boxType: "",
-    length: "",
-    width: "",
-    height: "",
-    material: "",
-    quantity: "",
-    deliveryLocation: "",
-  });
+function NewRequestForm({
+  prefillData,
+  onFormChange,
+  formState,
+}: {
+  prefillData?: FormState | null;
+  onFormChange?: (form: FormState) => void;
+  formState?: FormState;
+}) {
+  const [internalForm, setInternalForm] = useState<FormState>(
+    prefillData ?? emptyForm,
+  );
+  const form = formState ?? internalForm;
+  const setForm = onFormChange ? onFormChange : setInternalForm;
+
   const [file, setFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const submit = useSubmitQuoteRequest();
@@ -232,9 +267,10 @@ function NewRequestForm() {
       !form.length ||
       !form.width ||
       !form.height ||
-      !form.material ||
       !form.quantity ||
-      !form.deliveryLocation
+      !form.pincode ||
+      !form.state ||
+      !form.city
     ) {
       toast.error("Please fill in all required fields");
       return;
@@ -246,28 +282,21 @@ function NewRequestForm() {
         drawingFileId = await uploadFile(file, setUploadProgress);
         setUploadProgress(100);
       }
+      const deliveryLocation = `${form.shopNo ? `Shop No ${form.shopNo}, ` : ""}${form.building ? `${form.building}, ` : ""}${form.landmark ? `${form.landmark}, ` : ""}${form.city}, ${form.state} - ${form.pincode}`;
       await submit.mutateAsync({
         boxType: form.boxType,
         length: Number.parseFloat(form.length),
         width: Number.parseFloat(form.width),
         height: Number.parseFloat(form.height),
-        material: form.material,
+        material: "",
         quantity: BigInt(Number.parseInt(form.quantity)),
-        deliveryLocation: form.deliveryLocation,
+        deliveryLocation,
         drawingFileId,
       });
       toast.success(
         "Quote request submitted! We'll get back to you within 10–20 minutes.",
       );
-      setForm({
-        boxType: "",
-        length: "",
-        width: "",
-        height: "",
-        material: "",
-        quantity: "",
-        deliveryLocation: "",
-      });
+      setForm(emptyForm);
       setFile(null);
       setUploadProgress(0);
     } catch (err: any) {
@@ -276,194 +305,398 @@ function NewRequestForm() {
     }
   };
 
-  const update = (field: string, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const update = (field: keyof FormState, value: string) =>
+    setForm({ ...form, [field]: value });
 
   return (
-    <div
-      className="rounded-2xl p-6 md:p-8 max-w-2xl"
-      style={{
-        background: "oklch(0.20 0.04 255)",
-        border: "1px solid oklch(0.28 0.04 255)",
-        boxShadow: "0 4px 32px oklch(0 0 0 / 0.3)",
-      }}
-    >
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Box Type */}
-        <div className="grid gap-2">
-          <Label className="text-sm font-semibold text-foreground/80">
-            Box Type
-          </Label>
-          <Select
-            value={form.boxType}
-            onValueChange={(v) => update("boxType", v)}
-          >
-            <SelectTrigger
-              className="border-border/60 focus:border-primary"
-              data-ocid="quote_form.box_type_select"
-            >
-              <SelectValue placeholder="Select box type..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Wooden">🪵 Wooden</SelectItem>
-              <SelectItem value="Plastic">🧴 Plastic</SelectItem>
-              <SelectItem value="Custom">✨ Custom Design</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Dimensions */}
-        <div className="grid gap-2">
-          <Label className="text-sm font-semibold text-foreground/80">
-            Dimensions (mm)
-          </Label>
-          <div className="grid grid-cols-3 gap-3">
-            <Input
-              placeholder="Length"
-              type="number"
-              value={form.length}
-              onChange={(e) => update("length", e.target.value)}
-              className="border-border/60 focus:border-primary"
-              data-ocid="quote_form.length_input"
-            />
-            <Input
-              placeholder="Width"
-              type="number"
-              value={form.width}
-              onChange={(e) => update("width", e.target.value)}
-              className="border-border/60 focus:border-primary"
-              data-ocid="quote_form.width_input"
-            />
-            <Input
-              placeholder="Height"
-              type="number"
-              value={form.height}
-              onChange={(e) => update("height", e.target.value)}
-              className="border-border/60 focus:border-primary"
-              data-ocid="quote_form.height_input"
-            />
-          </div>
-        </div>
-
-        {/* Material + Quantity */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label className="text-sm font-semibold text-foreground/80">
-              Material
-            </Label>
-            <Input
-              placeholder="e.g. Plywood 18mm"
-              value={form.material}
-              onChange={(e) => update("material", e.target.value)}
-              className="border-border/60 focus:border-primary"
-              data-ocid="quote_form.material_input"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label className="text-sm font-semibold text-foreground/80">
-              Quantity
-            </Label>
-            <Input
-              placeholder="e.g. 50"
-              type="number"
-              value={form.quantity}
-              onChange={(e) => update("quantity", e.target.value)}
-              className="border-border/60 focus:border-primary"
-              data-ocid="quote_form.quantity_input"
-            />
-          </div>
-        </div>
-
-        {/* Delivery Location */}
-        <div className="grid gap-2">
-          <Label className="text-sm font-semibold text-foreground/80">
-            Delivery Location
-          </Label>
-          <Input
-            placeholder="e.g. Mumbai, Maharashtra"
-            value={form.deliveryLocation}
-            onChange={(e) => update("deliveryLocation", e.target.value)}
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Box Type */}
+      <div className="grid gap-2">
+        <Label className="text-sm font-semibold text-foreground/80">
+          Box Type
+        </Label>
+        <Select
+          value={form.boxType}
+          onValueChange={(v) => update("boxType", v)}
+        >
+          <SelectTrigger
             className="border-border/60 focus:border-primary"
-            data-ocid="quote_form.delivery_location_input"
+            data-ocid="quote_form.box_type_select"
+          >
+            <SelectValue placeholder="Select box type..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Metal">🔩 Metal</SelectItem>
+            <SelectItem value="Wooden">🪵 Wooden</SelectItem>
+            <SelectItem value="Plastic">🧴 Plastic</SelectItem>
+            <SelectItem value="Custom">✨ Custom Design</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Dimensions */}
+      <div className="grid gap-2">
+        <Label className="text-sm font-semibold text-foreground/80">
+          Dimensions (mm) — Length × Width × Height
+        </Label>
+        <div className="grid grid-cols-3 gap-3">
+          <Input
+            placeholder="Length"
+            type="number"
+            value={form.length}
+            onChange={(e) => update("length", e.target.value)}
+            className="border-border/60 focus:border-primary"
+            data-ocid="quote_form.length_input"
+          />
+          <Input
+            placeholder="Width"
+            type="number"
+            value={form.width}
+            onChange={(e) => update("width", e.target.value)}
+            className="border-border/60 focus:border-primary"
+            data-ocid="quote_form.width_input"
+          />
+          <Input
+            placeholder="Height"
+            type="number"
+            value={form.height}
+            onChange={(e) => update("height", e.target.value)}
+            className="border-border/60 focus:border-primary"
+            data-ocid="quote_form.height_input"
           />
         </div>
+      </div>
 
-        {/* Upload */}
-        <div className="grid gap-2">
-          <Label className="text-sm font-semibold text-foreground/80">
-            Drawing / Photo{" "}
-            <span className="font-normal text-muted-foreground">
-              (optional)
-            </span>
-          </Label>
-          <label
-            className="rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer transition-all"
-            style={{
-              border: "2px dashed oklch(0.35 0.05 255)",
-              background: "oklch(0.18 0.03 255)",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor =
-                "oklch(0.7 0.2 44 / 0.5)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor =
-                "oklch(0.35 0.05 255)";
-            }}
-            data-ocid="quote_form.upload_button"
+      {/* Quantity */}
+      <div className="grid gap-2">
+        <Label className="text-sm font-semibold text-foreground/80">
+          Quantity
+        </Label>
+        <Input
+          placeholder="e.g. 50"
+          type="number"
+          value={form.quantity}
+          onChange={(e) => update("quantity", e.target.value)}
+          className="border-border/60 focus:border-primary"
+          data-ocid="quote_form.quantity_input"
+        />
+      </div>
+
+      {/* Address */}
+      <div className="grid gap-2">
+        <Label className="text-sm font-semibold text-foreground/80">
+          Delivery Address
+        </Label>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-muted-foreground">Pincode*</Label>
+            <Input
+              placeholder="e.g. 400001"
+              type="number"
+              value={form.pincode}
+              onChange={(e) => update("pincode", e.target.value)}
+              className="border-border/60 focus:border-primary"
+              data-ocid="quote_form.pincode_input"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-muted-foreground">State*</Label>
+            <Input
+              placeholder="e.g. Maharashtra"
+              value={form.state}
+              onChange={(e) => update("state", e.target.value)}
+              className="border-border/60 focus:border-primary"
+              data-ocid="quote_form.state_input"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-muted-foreground">City*</Label>
+            <Input
+              placeholder="e.g. Mumbai"
+              value={form.city}
+              onChange={(e) => update("city", e.target.value)}
+              className="border-border/60 focus:border-primary"
+              data-ocid="quote_form.city_input"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-muted-foreground">
+              Landmark (optional)
+            </Label>
+            <Input
+              placeholder="e.g. Near Railway Station"
+              value={form.landmark}
+              onChange={(e) => update("landmark", e.target.value)}
+              className="border-border/60 focus:border-primary"
+              data-ocid="quote_form.landmark_input"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-muted-foreground">
+              Building (optional)
+            </Label>
+            <Input
+              placeholder="e.g. Sunrise Tower"
+              value={form.building}
+              onChange={(e) => update("building", e.target.value)}
+              className="border-border/60 focus:border-primary"
+              data-ocid="quote_form.building_input"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-muted-foreground">
+              Shop No (optional)
+            </Label>
+            <Input
+              placeholder="e.g. 12B"
+              value={form.shopNo}
+              onChange={(e) => update("shopNo", e.target.value)}
+              className="border-border/60 focus:border-primary"
+              data-ocid="quote_form.shopno_input"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Upload */}
+      <div className="grid gap-2">
+        <Label className="text-sm font-semibold text-foreground/80">
+          Drawing / Photo{" "}
+          <span className="font-normal text-muted-foreground">(optional)</span>
+        </Label>
+        <label
+          className="rounded-xl p-5 flex flex-col items-center gap-3 cursor-pointer transition-all"
+          style={{
+            border: "2px dashed oklch(0.35 0.05 255)",
+            background: "oklch(0.18 0.03 255)",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor =
+              "oklch(0.7 0.2 44 / 0.5)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor =
+              "oklch(0.35 0.05 255)";
+          }}
+          data-ocid="quote_form.upload_button"
+        >
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center"
+            style={{ background: "oklch(0.25 0.04 255)" }}
           >
+            <Upload className="w-4 h-4 text-primary" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium">
+              {file ? file.name : "Click to upload"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              PNG, JPG, PDF, DWG supported
+            </p>
+          </div>
+          {uploadProgress > 0 && uploadProgress < 100 && (
             <div
-              className="w-12 h-12 rounded-full flex items-center justify-center"
+              className="w-full rounded-full h-1.5 mt-1"
               style={{ background: "oklch(0.25 0.04 255)" }}
             >
-              <Upload className="w-5 h-5 text-primary" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-medium">
-                {file ? file.name : "Click to upload"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                PNG, JPG, PDF, DWG supported
-              </p>
-            </div>
-            {uploadProgress > 0 && uploadProgress < 100 && (
               <div
-                className="w-full rounded-full h-1.5 mt-1"
-                style={{ background: "oklch(0.25 0.04 255)" }}
+                className="bg-primary h-1.5 rounded-full transition-all"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*,.pdf,.dwg"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+      </div>
+
+      <Button
+        type="submit"
+        className="w-full font-semibold text-sm"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.7 0.2 44), oklch(0.65 0.22 38))",
+          color: "white",
+          boxShadow: "0 4px 20px oklch(0.7 0.2 44 / 0.35)",
+        }}
+        disabled={submit.isPending}
+        data-ocid="quote_form.submit_button"
+      >
+        {submit.isPending ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : null}
+        {submit.isPending ? "Submitting..." : "🚀 Submit Request"}
+      </Button>
+    </form>
+  );
+}
+
+function PastOrdersPanel({
+  requests,
+  isLoading,
+  onReorder,
+  onNavigate,
+}: {
+  requests: QuoteRequest[] | undefined;
+  isLoading: boolean;
+  onReorder: (form: FormState) => void;
+  onNavigate: (path: string) => void;
+}) {
+  return (
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col"
+      style={{
+        background: "oklch(0.19 0.04 255)",
+        border: "1px solid oklch(0.26 0.04 255)",
+        boxShadow: "0 4px 24px oklch(0 0 0 / 0.2)",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="px-5 py-4"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.22 0.05 255), oklch(0.20 0.04 255))",
+          borderBottom: "1px solid oklch(0.26 0.04 255)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: "oklch(0.7 0.2 44 / 0.15)" }}
+          >
+            <Package
+              className="w-3.5 h-3.5"
+              style={{ color: "oklch(0.7 0.2 44)" }}
+            />
+          </div>
+          <h3 className="font-bold text-sm font-display">Past Orders</h3>
+        </div>
+      </div>
+
+      {/* Order list */}
+      <ScrollArea className="flex-1" style={{ maxHeight: "520px" }}>
+        <div className="p-4 space-y-3">
+          {isLoading ? (
+            <div className="space-y-3" data-ocid="past_orders.loading_state">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-24 w-full rounded-xl" />
+              ))}
+            </div>
+          ) : !requests || requests.length === 0 ? (
+            <div
+              className="py-10 flex flex-col items-center gap-3 text-center"
+              data-ocid="past_orders.empty_state"
+            >
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ background: "oklch(0.7 0.2 44 / 0.1)" }}
               >
-                <div
-                  className="bg-primary h-1.5 rounded-full transition-all"
-                  style={{ width: `${uploadProgress}%` }}
+                <Package
+                  className="w-6 h-6"
+                  style={{ color: "oklch(0.7 0.2 44 / 0.5)" }}
                 />
               </div>
-            )}
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*,.pdf,.dwg"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-        </div>
+              <p className="text-sm text-muted-foreground">
+                No past orders yet
+              </p>
+              <p className="text-xs text-muted-foreground/60">
+                Your submitted requests will appear here
+              </p>
+            </div>
+          ) : (
+            requests.map((req, idx) => (
+              <div
+                key={req.id.toString()}
+                className="rounded-xl p-4 space-y-3 transition-all"
+                style={{
+                  background: "oklch(0.22 0.04 255)",
+                  border: "1px solid oklch(0.28 0.04 255)",
+                }}
+                data-ocid={`past_orders.item.${idx + 1}`}
+              >
+                {/* Order number + size */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="font-mono text-xs font-bold px-2 py-0.5 rounded-md"
+                      style={{
+                        background: "oklch(0.7 0.2 44 / 0.15)",
+                        color: "oklch(0.78 0.18 44)",
+                      }}
+                    >
+                      REQ-{req.id.toString()}
+                    </span>
+                    <StatusBadge status={req.status} />
+                  </div>
+                  <p
+                    className="text-xs font-medium"
+                    style={{ color: "oklch(0.65 0.03 255)" }}
+                  >
+                    {req.boxType} box &mdash;{" "}
+                    <span className="font-mono">
+                      {req.length}&times;{req.width}&times;{req.height} mm
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Qty: {req.quantity.toString()}
+                  </p>
+                </div>
 
-        <Button
-          type="submit"
-          className="w-full sm:w-auto px-8 py-2.5 font-semibold text-sm"
-          style={{
-            background:
-              "linear-gradient(135deg, oklch(0.7 0.2 44), oklch(0.65 0.22 38))",
-            color: "white",
-            boxShadow: "0 4px 20px oklch(0.7 0.2 44 / 0.35)",
-          }}
-          disabled={submit.isPending}
-          data-ocid="quote_form.submit_button"
-        >
-          {submit.isPending ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : null}
-          {submit.isPending ? "Submitting..." : "🚀 Submit Quote Request"}
-        </Button>
-      </form>
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 text-xs h-7 font-semibold"
+                    style={{
+                      background: "oklch(0.7 0.2 44 / 0.15)",
+                      color: "oklch(0.78 0.18 44)",
+                      border: "1px solid oklch(0.7 0.2 44 / 0.3)",
+                    }}
+                    onClick={() =>
+                      onReorder({
+                        boxType: req.boxType,
+                        length: String(req.length),
+                        width: String(req.width),
+                        height: String(req.height),
+                        quantity: req.quantity.toString(),
+                        pincode: "",
+                        state: "",
+                        city: "",
+                        landmark: "",
+                        building: "",
+                        shopNo: "",
+                      })
+                    }
+                    data-ocid={`past_orders.reorder_button.${idx + 1}`}
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Reorder
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 text-xs h-7 border-border/50"
+                    onClick={() => onNavigate(`/invoice/${req.id.toString()}`)}
+                    data-ocid={`past_orders.invoice_button.${idx + 1}`}
+                  >
+                    <FileText className="w-3 h-3 mr-1" />
+                    Invoice
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
@@ -664,6 +897,7 @@ export function CustomerDashboard({
   const [selectedRequest, setSelectedRequest] = useState<QuoteRequest | null>(
     null,
   );
+  const [quoteForm, setQuoteForm] = useState<FormState>(emptyForm);
   const { data: requests, isLoading } = useGetMyQuoteRequests();
   const { data: fetchedProfile } = useGetMyProfile();
   const profile = emailProfile ?? fetchedProfile;
@@ -678,6 +912,12 @@ export function CustomerDashboard({
     await clear();
     queryClient.clear();
     onNavigate("/");
+  };
+
+  const handleReorder = (form: FormState) => {
+    setQuoteForm(form);
+    setActiveTab("new");
+    toast.success("Form pre-filled with previous order details.");
   };
 
   // Compute stats
@@ -1192,7 +1432,34 @@ export function CustomerDashboard({
                   .
                 </p>
               </div>
-              <NewRequestForm />
+
+              {/* Two-column layout: form + past orders */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                {/* Left: Quote Form */}
+                <div
+                  className="lg:col-span-3 rounded-2xl p-6"
+                  style={{
+                    background: "oklch(0.20 0.04 255)",
+                    border: "1px solid oklch(0.28 0.04 255)",
+                    boxShadow: "0 4px 32px oklch(0 0 0 / 0.3)",
+                  }}
+                >
+                  <NewRequestForm
+                    formState={quoteForm}
+                    onFormChange={setQuoteForm}
+                  />
+                </div>
+
+                {/* Right: Past Orders */}
+                <div className="lg:col-span-2">
+                  <PastOrdersPanel
+                    requests={requests}
+                    isLoading={isLoading}
+                    onReorder={handleReorder}
+                    onNavigate={onNavigate}
+                  />
+                </div>
+              </div>
             </div>
           )}
 

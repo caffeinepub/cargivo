@@ -274,6 +274,8 @@ export interface backendInterface {
     saveCallerUserProfile(profile: CustomerProfile): Promise<void>;
     sendQuotation(args: QuotationArgs): Promise<void>;
     submitQuoteRequest(args: QuoteRequestArgs): Promise<bigint>;
+    submitQuoteRequestWithEmail(email: string, password: string, args: QuoteRequestArgs): Promise<bigint>;
+    getMyQuoteRequestsWithEmail(email: string, password: string): Promise<Array<QuoteRequest>>;
     updateEmailUserProfile(args: EmailProfileUpdateArgs): Promise<UpdateEmailUserProfileResult>;
     updateOrderStatus(args: OrderUpdateArgs): Promise<void>;
 }
@@ -684,6 +686,34 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.submitQuoteRequest(to_candid_QuoteRequestArgs_n33(this._uploadFile, this._downloadFile, arg0));
             return result;
+        }
+    }
+    async submitQuoteRequestWithEmail(email: string, password: string, arg0: QuoteRequestArgs): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.submitQuoteRequestWithEmail(email, password, to_candid_QuoteRequestArgs_n33(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.submitQuoteRequestWithEmail(email, password, to_candid_QuoteRequestArgs_n33(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async getMyQuoteRequestsWithEmail(email: string, password: string): Promise<Array<QuoteRequest>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyQuoteRequestsWithEmail(email, password);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyQuoteRequestsWithEmail(email, password);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
     async updateEmailUserProfile(arg0: EmailProfileUpdateArgs): Promise<UpdateEmailUserProfileResult> {

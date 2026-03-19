@@ -12,6 +12,7 @@ import type {
 } from "../backend.d";
 import type { UserRole } from "../backend.d";
 import { useActor } from "./useActor";
+import { useEmailAuth } from "./useEmailAuth";
 
 export type {
   CustomerProfile,
@@ -54,9 +55,23 @@ export function useIsCallerAdmin() {
 
 export function useGetMyQuoteRequests() {
   const { actor, isFetching: actorFetching } = useActor();
+  const { isEmailAuthenticated, emailUser } = useEmailAuth();
+  const emailSession = isEmailAuthenticated
+    ? JSON.parse(localStorage.getItem("cargivo_email_session") || "null")
+    : null;
   return useQuery<QuoteRequest[]>({
-    queryKey: ["myQuoteRequests"],
+    queryKey: [
+      "myQuoteRequests",
+      isEmailAuthenticated ? emailUser?.email : "ii",
+    ],
     queryFn: async () => {
+      if (isEmailAuthenticated && emailSession) {
+        if (!actor) return [];
+        return actor.getMyQuoteRequestsWithEmail(
+          emailSession.email,
+          emailSession.password,
+        );
+      }
       if (!actor) return [];
       return actor.getMyQuoteRequests();
     },
@@ -154,10 +169,21 @@ export function useSaveCallerUserProfile() {
 
 export function useSubmitQuoteRequest() {
   const { actor } = useActor();
+  const { isEmailAuthenticated } = useEmailAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (args: QuoteRequestArgs) => {
       if (!actor) throw new Error("Not authenticated");
+      const emailSession = isEmailAuthenticated
+        ? JSON.parse(localStorage.getItem("cargivo_email_session") || "null")
+        : null;
+      if (isEmailAuthenticated && emailSession) {
+        return actor.submitQuoteRequestWithEmail(
+          emailSession.email,
+          emailSession.password,
+          args,
+        );
+      }
       return actor.submitQuoteRequest(args);
     },
     onSuccess: () => {

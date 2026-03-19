@@ -165,6 +165,7 @@ actor {
 
   let customerProfiles = Map.empty<Principal, CustomerProfile>();
   let emailUsers = Map.empty<Text, EmailUserRecord>();
+  let emailRequestOwners = Map.empty<Nat, Text>();  // requestId -> email
   let quoteRequests = Map.empty<Nat, QuoteRequest>();
   let quotations = Map.empty<Nat, Quotation>();
   let orders = Map.empty<Nat, Order>();
@@ -557,4 +558,54 @@ actor {
       };
     };
   };
+  // Email-authenticated quote request submission
+  public shared func submitQuoteRequestWithEmail(email : Text, password : Text, args : QuoteRequestArgs) : async Nat {
+    switch (emailUsers.get(email)) {
+      case (null) { Runtime.trap("Email not found") };
+      case (?record) {
+        if (record.passwordHash != password) { Runtime.trap("Wrong password") };
+        let id = nextRequestId;
+        nextRequestId += 1;
+        let emailPrincipal = Principal.fromText("2vxsx-fae");
+        let request : QuoteRequest = {
+          id;
+          customerId = emailPrincipal;
+          boxType = args.boxType;
+          length = args.length;
+          width = args.width;
+          height = args.height;
+          material = args.material;
+          quantity = args.quantity;
+          drawingFileId = args.drawingFileId;
+          deliveryLocation = args.deliveryLocation;
+          status = "pending_quote";
+          createdAt = Time.now();
+          adminNotes = null;
+        };
+        quoteRequests.add(id, request);
+        emailRequestOwners.add(id, email);
+        id;
+      };
+    };
+  };
+
+  // Email-authenticated get my quote requests
+  public query func getMyQuoteRequestsWithEmail(email : Text, password : Text) : async [QuoteRequest] {
+    switch (emailUsers.get(email)) {
+      case (null) { Runtime.trap("Email not found") };
+      case (?record) {
+        if (record.passwordHash != password) { Runtime.trap("Wrong password") };
+        let resultArray = quoteRequests.values().toArray();
+        resultArray.filter(
+          func(request) {
+            switch (emailRequestOwners.get(request.id)) {
+              case (?ownerEmail) { ownerEmail == email };
+              case (null) { false };
+            };
+          }
+        );
+      };
+    };
+  };
+
 };

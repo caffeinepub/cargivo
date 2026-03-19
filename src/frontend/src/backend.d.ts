@@ -174,6 +174,8 @@ export interface backendInterface {
     saveCallerUserProfile(profile: CustomerProfile): Promise<void>;
     sendQuotation(args: QuotationArgs): Promise<void>;
     submitQuoteRequest(args: QuoteRequestArgs): Promise<bigint>;
+    submitQuoteRequestWithEmail(email: string, password: string, args: QuoteRequestArgs): Promise<bigint>;
+    getMyQuoteRequestsWithEmail(email: string, password: string): Promise<Array<QuoteRequest>>;
     updateEmailUserProfile(args: EmailProfileUpdateArgs): Promise<UpdateEmailUserProfileResult>;
     updateOrderStatus(args: OrderUpdateArgs): Promise<void>;
 }
