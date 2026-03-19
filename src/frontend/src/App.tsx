@@ -1,6 +1,7 @@
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
+import { useEmailAuth } from "@/hooks/useEmailAuth";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useGetMyProfile, useIsCallerAdmin } from "@/hooks/useQueries";
 import { AdminDashboard } from "@/pages/AdminDashboard";
@@ -42,7 +43,9 @@ function AppLoader() {
 export default function App() {
   const { path, navigate } = useRouter();
   const { identity, login, isInitializing } = useInternetIdentity();
-  const isAuthenticated = !!identity;
+  const { emailUser, isEmailAuthenticated, emailLogout } = useEmailAuth();
+
+  const isAuthenticated = !!identity || isEmailAuthenticated;
 
   const {
     data: profile,
@@ -53,10 +56,17 @@ export default function App() {
   const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
 
   const showOnboarding =
-    isAuthenticated && profileFetched && !profileLoading && profile === null;
+    !!identity && profileFetched && !profileLoading && profile === null;
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    // For email-auth users, navigate directly
+    if (isEmailAuthenticated && !identity) {
+      if (path === "/" || path === "" || path === "/login") {
+        navigate("/dashboard");
+      }
+      return;
+    }
     if (profileLoading || adminLoading) return;
     if (profile === null) return;
     if (path === "/" || path === "" || path === "/login") {
@@ -65,6 +75,8 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isAuthenticated,
+    isEmailAuthenticated,
+    identity,
     profile,
     profileLoading,
     adminLoading,
@@ -73,7 +85,7 @@ export default function App() {
     navigate,
   ]);
 
-  if (isInitializing || (isAuthenticated && (profileLoading || adminLoading))) {
+  if (isInitializing || (!!identity && (profileLoading || adminLoading))) {
     return <AppLoader />;
   }
 
@@ -93,7 +105,7 @@ export default function App() {
   }
 
   if (path === "/admin") {
-    if (!isAuthenticated) {
+    if (!identity) {
       navigate("/");
       return null;
     }
@@ -109,6 +121,22 @@ export default function App() {
     if (!isAuthenticated) {
       navigate("/");
       return null;
+    }
+    // Email-auth user: pass profile directly, skip II profile loading
+    if (isEmailAuthenticated && !identity && emailUser) {
+      return (
+        <>
+          <CustomerDashboard
+            onNavigate={navigate}
+            emailProfile={emailUser}
+            onEmailLogout={() => {
+              emailLogout();
+              navigate("/");
+            }}
+          />
+          <Toaster richColors />
+        </>
+      );
     }
     return (
       <>

@@ -18,11 +18,27 @@ export interface CustomerProfile {
   'companyName' : string,
   'phone' : string,
 }
+export interface EmailProfileUpdateArgs {
+  'password' : string,
+  'email' : string,
+  'profile' : CustomerProfile,
+}
+export interface GetEmailUserProfileArgs {
+  'password' : string,
+  'email' : string,
+}
+export type GetEmailUserProfileResult = { 'ok' : CustomerProfile } |
+  { 'errWrongPassword' : string } |
+  { 'errNotFound' : string };
 export interface InvoiceData {
   'customer' : CustomerProfile,
   'request' : QuoteRequest,
   'quotation' : Quotation,
 }
+export interface LoginEmailUserArgs { 'password' : string, 'email' : string }
+export type LoginEmailUserResult = { 'ok' : CustomerProfile } |
+  { 'errWrongPassword' : string } |
+  { 'errNotFound' : string };
 export interface Order {
   'requestId' : bigint,
   'manufacturingNotes' : [] | [string],
@@ -82,10 +98,26 @@ export interface QuoteRequestArgs {
 export interface RegisterCustomerProfileArgs {
   'contactName' : string,
   'gstNumber' : string,
+  'email' : string,
   'address' : string,
   'companyName' : string,
   'phone' : string,
 }
+export interface RegisterEmailUserArgs {
+  'contactName' : string,
+  'gstNumber' : string,
+  'password' : string,
+  'email' : string,
+  'address' : string,
+  'companyName' : string,
+  'phone' : string,
+}
+export type RegisterEmailUserResult = { 'ok' : null } |
+  { 'errInvalid' : string } |
+  { 'errEmailTaken' : string };
+export type UpdateEmailUserProfileResult = { 'ok' : null } |
+  { 'errWrongPassword' : string } |
+  { 'errNotFound' : string };
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
@@ -123,6 +155,10 @@ export interface _SERVICE {
   'getAllQuoteRequests' : ActorMethod<[], Array<QuoteRequest>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [CustomerProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getEmailUserProfile' : ActorMethod<
+    [GetEmailUserProfileArgs],
+    GetEmailUserProfileResult
+  >,
   'getInvoiceData' : ActorMethod<[bigint], [] | [InvoiceData]>,
   'getMyProfile' : ActorMethod<[], [] | [CustomerProfile]>,
   'getMyQuoteRequests' : ActorMethod<[], Array<QuoteRequest>>,
@@ -130,15 +166,24 @@ export interface _SERVICE {
   'getQuotation' : ActorMethod<[bigint], [] | [Quotation]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [CustomerProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'loginEmailUser' : ActorMethod<[LoginEmailUserArgs], LoginEmailUserResult>,
   'markAdvancePaid' : ActorMethod<[bigint], undefined>,
   'registerCustomerProfile' : ActorMethod<
     [RegisterCustomerProfileArgs],
     undefined
   >,
+  'registerEmailUser' : ActorMethod<
+    [RegisterEmailUserArgs],
+    RegisterEmailUserResult
+  >,
   'rejectQuote' : ActorMethod<[bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[CustomerProfile], undefined>,
   'sendQuotation' : ActorMethod<[QuotationArgs], undefined>,
   'submitQuoteRequest' : ActorMethod<[QuoteRequestArgs], bigint>,
+  'updateEmailUserProfile' : ActorMethod<
+    [EmailProfileUpdateArgs],
+    UpdateEmailUserProfileResult
+  >,
   'updateOrderStatus' : ActorMethod<[OrderUpdateArgs], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

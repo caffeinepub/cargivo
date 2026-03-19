@@ -8,12 +8,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useEmailAuth } from "@/hooks/useEmailAuth";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import {
   ChevronRight,
   Clock,
   ExternalLink,
   FileText,
+  Loader2,
   Package,
   ShieldCheck,
   Truck,
@@ -154,27 +156,61 @@ const emptyForm = {
   email: "",
   password: "",
   phone: "",
-  gst: "",
+  gstNumber: "",
   address: "",
 };
 
-export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
+export function LandingPage({ onNavigate }: LandingPageProps) {
   const { identity } = useInternetIdentity();
-  const isAuthenticated = !!identity;
+  const { emailRegister, emailLogin, isEmailAuthenticated } = useEmailAuth();
+  const isAuthenticated = !!identity || isEmailAuthenticated;
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [regError, setRegError] = useState("");
+  const [regLoading, setRegLoading] = useState(false);
 
   function handleFormChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setRegError("");
   }
 
-  function handleRegisterSubmit(e: React.FormEvent) {
+  async function handleRegisterSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setShowRegisterModal(false);
-    setForm(emptyForm);
-    toast.success("Registration submitted! Our team will contact you shortly.");
+    setRegLoading(true);
+    setRegError("");
+    try {
+      const result = await emailRegister({
+        email: form.email,
+        password: form.password,
+        companyName: form.companyName,
+        gstNumber: form.gstNumber,
+        address: form.address,
+        phone: form.phone,
+        contactName: form.contactName,
+      });
+      if (result.__kind__ === "ok") {
+        const loginResult = await emailLogin(form.email, form.password);
+        setShowRegisterModal(false);
+        setForm(emptyForm);
+        if (loginResult.__kind__ === "ok") {
+          toast.success("Account created! Welcome to Cargivo.");
+          onNavigate("/dashboard");
+        } else {
+          toast.success("Account created! Please log in.");
+          onNavigate("/login");
+        }
+      } else if (result.__kind__ === "errEmailTaken") {
+        setRegError("Email already registered. Please log in.");
+      } else {
+        setRegError("Invalid details. Please check your information.");
+      }
+    } catch {
+      setRegError("Registration failed. Please try again.");
+    } finally {
+      setRegLoading(false);
+    }
   }
 
   return (
@@ -187,7 +223,7 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
         >
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              Create Your Free Account
+              Create Your Account
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleRegisterSubmit} className="space-y-4 mt-2">
@@ -260,9 +296,9 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
                 <Label htmlFor="gst">GST Number</Label>
                 <Input
                   id="gst"
-                  name="gst"
+                  name="gstNumber"
                   placeholder="22AAAAA0000A1Z5"
-                  value={form.gst}
+                  value={form.gstNumber}
                   onChange={handleFormChange}
                   required
                   data-ocid="register.input"
@@ -282,12 +318,21 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
                 data-ocid="register.textarea"
               />
             </div>
+            {regError && (
+              <p
+                className="text-sm text-red-500"
+                data-ocid="register.error_state"
+              >
+                {regError}
+              </p>
+            )}
             <div className="flex gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1"
                 onClick={() => setShowRegisterModal(false)}
+                disabled={regLoading}
                 data-ocid="register.cancel_button"
               >
                 Cancel
@@ -295,9 +340,17 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
               <Button
                 type="submit"
                 className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 glow-orange"
+                disabled={regLoading}
                 data-ocid="register.submit_button"
               >
-                Signup
+                {regLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing
+                    up...
+                  </>
+                ) : (
+                  "Signup"
+                )}
               </Button>
             </div>
           </form>
@@ -305,37 +358,37 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
       </Dialog>
 
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-white">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             <img
-              src="/assets/uploads/image-1-2.png"
+              src="/assets/generated/logo-transparent.png"
               alt="Cargivo"
-              className="h-9 w-auto"
+              className="h-14 w-auto"
             />
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <a
               href="#how-it-works"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               How It Works
             </a>
             <a
               href="#box-types"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               Box Types
             </a>
             <a
               href="#why-cargivo"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               Why Cargivo
             </a>
             <a
               href="#partners"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               Partners
             </a>
@@ -353,7 +406,7 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
                 <Button
                   variant="ghost"
                   onClick={() => onNavigate("/login")}
-                  className="text-foreground"
+                  className="text-gray-800"
                   data-ocid="landing.login_button"
                 >
                   Login
@@ -400,7 +453,9 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
               <Button
                 size="lg"
                 onClick={() =>
-                  isAuthenticated ? onNavigate("/dashboard") : onLogin()
+                  isAuthenticated
+                    ? onNavigate("/dashboard")
+                    : onNavigate("/login")
                 }
                 className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 h-12 glow-orange"
                 data-ocid="landing.request_quote_button"
@@ -529,7 +584,9 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
                 transition={{ delay: i * 0.1 }}
                 className={`relative overflow-hidden rounded-xl border border-border bg-gradient-to-br ${bt.color} p-6 hover:border-primary/40 transition-all cursor-pointer group`}
                 onClick={() =>
-                  isAuthenticated ? onNavigate("/dashboard") : onLogin()
+                  isAuthenticated
+                    ? onNavigate("/dashboard")
+                    : onNavigate("/login")
                 }
               >
                 <div className="text-4xl mb-4">{bt.icon}</div>
@@ -651,12 +708,14 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
               <Button
                 size="lg"
                 onClick={() =>
-                  isAuthenticated ? onNavigate("/dashboard") : onLogin()
+                  isAuthenticated
+                    ? onNavigate("/dashboard")
+                    : onNavigate("/login")
                 }
                 className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 h-12 glow-orange"
                 data-ocid="landing.cta.primary_button"
               >
-                Get Started — It's Free
+                Get Started
               </Button>
             </div>
           </motion.div>
@@ -666,11 +725,13 @@ export function LandingPage({ onNavigate, onLogin }: LandingPageProps) {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <img
-            src="/assets/uploads/image-1-2.png"
-            alt="Cargivo"
-            className="h-7 w-auto opacity-70"
-          />
+          <div className="flex items-center">
+            <img
+              src="/assets/generated/logo-transparent.png"
+              alt="Cargivo"
+              className="h-10 w-auto"
+            />
+          </div>
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()}. Built with ❤️ using{" "}
             <a

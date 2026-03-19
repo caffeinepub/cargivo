@@ -12,19 +12,10 @@ export interface InvoiceData {
     request: QuoteRequest;
     quotation: Quotation;
 }
-export interface Quotation {
-    deliveryCharge: number;
-    requestId: bigint;
-    gstPercent: number;
-    sentAt: bigint;
-    notes?: string;
-    totalPrice: number;
-    basePrice: number;
-    validUntil: bigint;
-}
 export interface RegisterCustomerProfileArgs {
     contactName: string;
     gstNumber: string;
+    email: string;
     address: string;
     companyName: string;
     phone: string;
@@ -62,10 +53,23 @@ export interface QuoteRequest {
     adminNotes?: string;
     material: string;
 }
-export interface OrderUpdateArgs {
-    requestId: bigint;
-    manufacturingNotes?: string;
-    deliveryTrackingInfo?: string;
+export interface LoginEmailUserArgs {
+    password: string;
+    email: string;
+}
+export type GetEmailUserProfileResult = {
+    __kind__: "ok";
+    ok: CustomerProfile;
+} | {
+    __kind__: "errWrongPassword";
+    errWrongPassword: string;
+} | {
+    __kind__: "errNotFound";
+    errNotFound: string;
+};
+export interface GetEmailUserProfileArgs {
+    password: string;
+    email: string;
 }
 export interface CustomerProfile {
     contactName: string;
@@ -83,6 +87,65 @@ export interface Order {
     advancePaid: boolean;
     customerId: Principal;
 }
+export interface Quotation {
+    deliveryCharge: number;
+    requestId: bigint;
+    gstPercent: number;
+    sentAt: bigint;
+    notes?: string;
+    totalPrice: number;
+    basePrice: number;
+    validUntil: bigint;
+}
+export interface EmailProfileUpdateArgs {
+    password: string;
+    email: string;
+    profile: CustomerProfile;
+}
+export interface RegisterEmailUserArgs {
+    contactName: string;
+    gstNumber: string;
+    password: string;
+    email: string;
+    address: string;
+    companyName: string;
+    phone: string;
+}
+export type LoginEmailUserResult = {
+    __kind__: "ok";
+    ok: CustomerProfile;
+} | {
+    __kind__: "errWrongPassword";
+    errWrongPassword: string;
+} | {
+    __kind__: "errNotFound";
+    errNotFound: string;
+};
+export type UpdateEmailUserProfileResult = {
+    __kind__: "ok";
+    ok: null;
+} | {
+    __kind__: "errWrongPassword";
+    errWrongPassword: string;
+} | {
+    __kind__: "errNotFound";
+    errNotFound: string;
+};
+export type RegisterEmailUserResult = {
+    __kind__: "ok";
+    ok: null;
+} | {
+    __kind__: "errInvalid";
+    errInvalid: string;
+} | {
+    __kind__: "errEmailTaken";
+    errEmailTaken: string;
+};
+export interface OrderUpdateArgs {
+    requestId: bigint;
+    manufacturingNotes?: string;
+    deliveryTrackingInfo?: string;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -95,6 +158,7 @@ export interface backendInterface {
     getAllQuoteRequests(): Promise<Array<QuoteRequest>>;
     getCallerUserProfile(): Promise<CustomerProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getEmailUserProfile(args: GetEmailUserProfileArgs): Promise<GetEmailUserProfileResult>;
     getInvoiceData(requestId: bigint): Promise<InvoiceData | null>;
     getMyProfile(): Promise<CustomerProfile | null>;
     getMyQuoteRequests(): Promise<Array<QuoteRequest>>;
@@ -102,11 +166,14 @@ export interface backendInterface {
     getQuotation(requestId: bigint): Promise<Quotation | null>;
     getUserProfile(user: Principal): Promise<CustomerProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    loginEmailUser(args: LoginEmailUserArgs): Promise<LoginEmailUserResult>;
     markAdvancePaid(requestId: bigint): Promise<void>;
     registerCustomerProfile(args: RegisterCustomerProfileArgs): Promise<void>;
+    registerEmailUser(args: RegisterEmailUserArgs): Promise<RegisterEmailUserResult>;
     rejectQuote(requestId: bigint): Promise<void>;
     saveCallerUserProfile(profile: CustomerProfile): Promise<void>;
     sendQuotation(args: QuotationArgs): Promise<void>;
     submitQuoteRequest(args: QuoteRequestArgs): Promise<bigint>;
+    updateEmailUserProfile(args: EmailProfileUpdateArgs): Promise<UpdateEmailUserProfileResult>;
     updateOrderStatus(args: OrderUpdateArgs): Promise<void>;
 }

@@ -1,14 +1,15 @@
 import Runtime "mo:core/Runtime";
 import Map "mo:core/Map";
 import Array "mo:core/Array";
+import Text "mo:core/Text";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
-import Text "mo:core/Text";
-import Nat "mo:core/Nat";
-import MixinStorage "blob-storage/Mixin";
+import Order "mo:core/Order";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Order "mo:core/Order";
+import MixinStorage "blob-storage/Mixin";
+
+
 
 actor {
   let accessControlState = AccessControl.initState();
@@ -107,7 +108,63 @@ actor {
     deliveryTrackingInfo : ?Text;
   };
 
+  type EmailUserRecord = {
+    passwordHash : Text;
+    profile : CustomerProfile;
+  };
+
+  type RegisterEmailUserArgs = {
+    email : Text;
+    password : Text;
+    companyName : Text;
+    gstNumber : Text;
+    address : Text;
+    phone : Text;
+    contactName : Text;
+  };
+
+  type RegisterEmailUserResult = {
+    #ok;
+    #errEmailTaken : Text;
+    #errInvalid : Text;
+  };
+
+  type LoginEmailUserArgs = {
+    email : Text;
+    password : Text;
+  };
+
+  type LoginEmailUserResult = {
+    #ok : CustomerProfile;
+    #errNotFound : Text;
+    #errWrongPassword : Text;
+  };
+
+  type EmailProfileUpdateArgs = {
+    email : Text;
+    password : Text;
+    profile : CustomerProfile;
+  };
+
+  type UpdateEmailUserProfileResult = {
+    #ok;
+    #errNotFound : Text;
+    #errWrongPassword : Text;
+  };
+
+  type GetEmailUserProfileArgs = {
+    email : Text;
+    password : Text;
+  };
+
+  type GetEmailUserProfileResult = {
+    #ok : CustomerProfile;
+    #errNotFound : Text;
+    #errWrongPassword : Text;
+  };
+
   let customerProfiles = Map.empty<Principal, CustomerProfile>();
+  let emailUsers = Map.empty<Text, EmailUserRecord>();
   let quoteRequests = Map.empty<Nat, QuoteRequest>();
   let quotations = Map.empty<Nat, Quotation>();
   let orders = Map.empty<Nat, Order>();
@@ -433,5 +490,71 @@ actor {
       case (?c) { c };
     };
     ?{ request; quotation; customer };
+  };
+
+  //------------------- Email User Management -------------------//
+
+  public shared ({ caller }) func registerEmailUser(args : RegisterEmailUserArgs) : async RegisterEmailUserResult {
+    // No authorization check - allow anonymous principals (guests) to register
+    switch (emailUsers.get(args.email)) {
+      case (null) {
+        let profile : CustomerProfile = {
+          companyName = args.companyName;
+          gstNumber = args.gstNumber;
+          address = args.address;
+          phone = args.phone;
+          contactName = args.contactName;
+          email = args.email;
+        };
+        let record : EmailUserRecord = {
+          passwordHash = args.password;
+          profile;
+        };
+        emailUsers.add(args.email, record);
+        #ok;
+      };
+      case (?_) { #errEmailTaken("Email is already in use") };
+    };
+  };
+
+  public shared ({ caller }) func loginEmailUser(args : LoginEmailUserArgs) : async LoginEmailUserResult {
+    // No authorization check - authentication is via email+password
+    switch (emailUsers.get(args.email)) {
+      case (null) { #errNotFound("Email not found") };
+      case (?record) {
+        if (record.passwordHash == args.password) {
+          #ok(record.profile);
+        } else { #errWrongPassword("Incorrect password") };
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateEmailUserProfile(args : EmailProfileUpdateArgs) : async UpdateEmailUserProfileResult {
+    // No authorization check - authentication is via email+password
+    switch (emailUsers.get(args.email)) {
+      case (null) { #errNotFound("Email not found") };
+      case (?record) {
+        if (record.passwordHash == args.password) {
+          let updatedRecord : EmailUserRecord = {
+            passwordHash = record.passwordHash;
+            profile = args.profile;
+          };
+          emailUsers.add(args.email, updatedRecord);
+          #ok;
+        } else { #errWrongPassword("Incorrect password") };
+      };
+    };
+  };
+
+  public shared ({ caller }) func getEmailUserProfile(args : GetEmailUserProfileArgs) : async GetEmailUserProfileResult {
+    // No authorization check - authentication is via email+password
+    switch (emailUsers.get(args.email)) {
+      case (null) { #errNotFound("Email not found") };
+      case (?record) {
+        if (record.passwordHash == args.password) {
+          #ok(record.profile);
+        } else { #errWrongPassword("Incorrect password") };
+      };
+    };
   };
 };

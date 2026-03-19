@@ -47,6 +47,15 @@ export const QuoteRequest = IDL.Record({
   'adminNotes' : IDL.Opt(IDL.Text),
   'material' : IDL.Text,
 });
+export const GetEmailUserProfileArgs = IDL.Record({
+  'password' : IDL.Text,
+  'email' : IDL.Text,
+});
+export const GetEmailUserProfileResult = IDL.Variant({
+  'ok' : CustomerProfile,
+  'errWrongPassword' : IDL.Text,
+  'errNotFound' : IDL.Text,
+});
 export const Quotation = IDL.Record({
   'deliveryCharge' : IDL.Float64,
   'requestId' : IDL.Nat,
@@ -70,12 +79,36 @@ export const Order = IDL.Record({
   'advancePaid' : IDL.Bool,
   'customerId' : IDL.Principal,
 });
+export const LoginEmailUserArgs = IDL.Record({
+  'password' : IDL.Text,
+  'email' : IDL.Text,
+});
+export const LoginEmailUserResult = IDL.Variant({
+  'ok' : CustomerProfile,
+  'errWrongPassword' : IDL.Text,
+  'errNotFound' : IDL.Text,
+});
 export const RegisterCustomerProfileArgs = IDL.Record({
   'contactName' : IDL.Text,
   'gstNumber' : IDL.Text,
+  'email' : IDL.Text,
   'address' : IDL.Text,
   'companyName' : IDL.Text,
   'phone' : IDL.Text,
+});
+export const RegisterEmailUserArgs = IDL.Record({
+  'contactName' : IDL.Text,
+  'gstNumber' : IDL.Text,
+  'password' : IDL.Text,
+  'email' : IDL.Text,
+  'address' : IDL.Text,
+  'companyName' : IDL.Text,
+  'phone' : IDL.Text,
+});
+export const RegisterEmailUserResult = IDL.Variant({
+  'ok' : IDL.Null,
+  'errInvalid' : IDL.Text,
+  'errEmailTaken' : IDL.Text,
 });
 export const QuotationArgs = IDL.Record({
   'deliveryCharge' : IDL.Float64,
@@ -94,6 +127,16 @@ export const QuoteRequestArgs = IDL.Record({
   'quantity' : IDL.Nat,
   'width' : IDL.Float64,
   'material' : IDL.Text,
+});
+export const EmailProfileUpdateArgs = IDL.Record({
+  'password' : IDL.Text,
+  'email' : IDL.Text,
+  'profile' : CustomerProfile,
+});
+export const UpdateEmailUserProfileResult = IDL.Variant({
+  'ok' : IDL.Null,
+  'errWrongPassword' : IDL.Text,
+  'errNotFound' : IDL.Text,
 });
 export const OrderUpdateArgs = IDL.Record({
   'requestId' : IDL.Nat,
@@ -139,6 +182,11 @@ export const idlService = IDL.Service({
   'getAllQuoteRequests' : IDL.Func([], [IDL.Vec(QuoteRequest)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(CustomerProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getEmailUserProfile' : IDL.Func(
+      [GetEmailUserProfileArgs],
+      [GetEmailUserProfileResult],
+      [],
+    ),
   'getInvoiceData' : IDL.Func([IDL.Nat], [IDL.Opt(InvoiceData)], ['query']),
   'getMyProfile' : IDL.Func([], [IDL.Opt(CustomerProfile)], ['query']),
   'getMyQuoteRequests' : IDL.Func([], [IDL.Vec(QuoteRequest)], ['query']),
@@ -150,12 +198,23 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'loginEmailUser' : IDL.Func([LoginEmailUserArgs], [LoginEmailUserResult], []),
   'markAdvancePaid' : IDL.Func([IDL.Nat], [], []),
   'registerCustomerProfile' : IDL.Func([RegisterCustomerProfileArgs], [], []),
+  'registerEmailUser' : IDL.Func(
+      [RegisterEmailUserArgs],
+      [RegisterEmailUserResult],
+      [],
+    ),
   'rejectQuote' : IDL.Func([IDL.Nat], [], []),
   'saveCallerUserProfile' : IDL.Func([CustomerProfile], [], []),
   'sendQuotation' : IDL.Func([QuotationArgs], [], []),
   'submitQuoteRequest' : IDL.Func([QuoteRequestArgs], [IDL.Nat], []),
+  'updateEmailUserProfile' : IDL.Func(
+      [EmailProfileUpdateArgs],
+      [UpdateEmailUserProfileResult],
+      [],
+    ),
   'updateOrderStatus' : IDL.Func([OrderUpdateArgs], [], []),
 });
 
@@ -201,6 +260,15 @@ export const idlFactory = ({ IDL }) => {
     'adminNotes' : IDL.Opt(IDL.Text),
     'material' : IDL.Text,
   });
+  const GetEmailUserProfileArgs = IDL.Record({
+    'password' : IDL.Text,
+    'email' : IDL.Text,
+  });
+  const GetEmailUserProfileResult = IDL.Variant({
+    'ok' : CustomerProfile,
+    'errWrongPassword' : IDL.Text,
+    'errNotFound' : IDL.Text,
+  });
   const Quotation = IDL.Record({
     'deliveryCharge' : IDL.Float64,
     'requestId' : IDL.Nat,
@@ -224,12 +292,36 @@ export const idlFactory = ({ IDL }) => {
     'advancePaid' : IDL.Bool,
     'customerId' : IDL.Principal,
   });
+  const LoginEmailUserArgs = IDL.Record({
+    'password' : IDL.Text,
+    'email' : IDL.Text,
+  });
+  const LoginEmailUserResult = IDL.Variant({
+    'ok' : CustomerProfile,
+    'errWrongPassword' : IDL.Text,
+    'errNotFound' : IDL.Text,
+  });
   const RegisterCustomerProfileArgs = IDL.Record({
     'contactName' : IDL.Text,
     'gstNumber' : IDL.Text,
+    'email' : IDL.Text,
     'address' : IDL.Text,
     'companyName' : IDL.Text,
     'phone' : IDL.Text,
+  });
+  const RegisterEmailUserArgs = IDL.Record({
+    'contactName' : IDL.Text,
+    'gstNumber' : IDL.Text,
+    'password' : IDL.Text,
+    'email' : IDL.Text,
+    'address' : IDL.Text,
+    'companyName' : IDL.Text,
+    'phone' : IDL.Text,
+  });
+  const RegisterEmailUserResult = IDL.Variant({
+    'ok' : IDL.Null,
+    'errInvalid' : IDL.Text,
+    'errEmailTaken' : IDL.Text,
   });
   const QuotationArgs = IDL.Record({
     'deliveryCharge' : IDL.Float64,
@@ -248,6 +340,16 @@ export const idlFactory = ({ IDL }) => {
     'quantity' : IDL.Nat,
     'width' : IDL.Float64,
     'material' : IDL.Text,
+  });
+  const EmailProfileUpdateArgs = IDL.Record({
+    'password' : IDL.Text,
+    'email' : IDL.Text,
+    'profile' : CustomerProfile,
+  });
+  const UpdateEmailUserProfileResult = IDL.Variant({
+    'ok' : IDL.Null,
+    'errWrongPassword' : IDL.Text,
+    'errNotFound' : IDL.Text,
   });
   const OrderUpdateArgs = IDL.Record({
     'requestId' : IDL.Nat,
@@ -297,6 +399,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getEmailUserProfile' : IDL.Func(
+        [GetEmailUserProfileArgs],
+        [GetEmailUserProfileResult],
+        [],
+      ),
     'getInvoiceData' : IDL.Func([IDL.Nat], [IDL.Opt(InvoiceData)], ['query']),
     'getMyProfile' : IDL.Func([], [IDL.Opt(CustomerProfile)], ['query']),
     'getMyQuoteRequests' : IDL.Func([], [IDL.Vec(QuoteRequest)], ['query']),
@@ -308,12 +415,27 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'loginEmailUser' : IDL.Func(
+        [LoginEmailUserArgs],
+        [LoginEmailUserResult],
+        [],
+      ),
     'markAdvancePaid' : IDL.Func([IDL.Nat], [], []),
     'registerCustomerProfile' : IDL.Func([RegisterCustomerProfileArgs], [], []),
+    'registerEmailUser' : IDL.Func(
+        [RegisterEmailUserArgs],
+        [RegisterEmailUserResult],
+        [],
+      ),
     'rejectQuote' : IDL.Func([IDL.Nat], [], []),
     'saveCallerUserProfile' : IDL.Func([CustomerProfile], [], []),
     'sendQuotation' : IDL.Func([QuotationArgs], [], []),
     'submitQuoteRequest' : IDL.Func([QuoteRequestArgs], [IDL.Nat], []),
+    'updateEmailUserProfile' : IDL.Func(
+        [EmailProfileUpdateArgs],
+        [UpdateEmailUserProfileResult],
+        [],
+      ),
     'updateOrderStatus' : IDL.Func([OrderUpdateArgs], [], []),
   });
 };

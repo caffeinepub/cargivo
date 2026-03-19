@@ -1,5 +1,4 @@
 import { StatusBadge } from "@/components/StatusBadge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,7 +29,6 @@ import { useBlobStorage } from "@/hooks/useBlobStorage";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import {
   type CustomerProfile,
-  type Quotation,
   type QuoteRequest,
   useApproveQuote,
   useGetMyProfile,
@@ -43,12 +41,14 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle,
+  ClipboardList,
   FileText,
-  List,
   Loader2,
   LogOut,
   Package,
+  PackageCheck,
   Plus,
+  TrendingUp,
   Upload,
   User,
   XCircle,
@@ -58,6 +58,8 @@ import { toast } from "sonner";
 
 interface CustomerDashboardProps {
   onNavigate: (path: string) => void;
+  emailProfile?: CustomerProfile;
+  onEmailLogout?: () => void;
 }
 
 function QuoteDetailModal({
@@ -95,9 +97,12 @@ function QuoteDetailModal({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-card border-border">
+      <DialogContent className="sm:max-w-lg border-border">
         <DialogHeader>
-          <DialogTitle>Quote for REQ-{request.id.toString()}</DialogTitle>
+          <DialogTitle className="text-lg font-display">
+            Quote for{" "}
+            <span className="text-primary">REQ-{request.id.toString()}</span>
+          </DialogTitle>
         </DialogHeader>
         {isLoading ? (
           <div
@@ -114,10 +119,17 @@ function QuoteDetailModal({
           </p>
         ) : (
           <div className="space-y-4">
-            <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+            <div
+              className="rounded-xl p-5 space-y-3"
+              style={{
+                background:
+                  "linear-gradient(135deg, oklch(0.22 0.04 255), oklch(0.25 0.05 255))",
+                border: "1px solid oklch(0.30 0.05 255)",
+              }}
+            >
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Base Price</span>
-                <span className="font-medium">
+                <span className="font-semibold">
                   ₹{quotation.basePrice.toLocaleString()}
                 </span>
               </div>
@@ -125,7 +137,7 @@ function QuoteDetailModal({
                 <span className="text-muted-foreground">
                   GST ({quotation.gstPercent}%)
                 </span>
-                <span className="font-medium">
+                <span className="font-semibold">
                   ₹
                   {(
                     (quotation.basePrice * quotation.gstPercent) /
@@ -135,11 +147,14 @@ function QuoteDetailModal({
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Delivery Charge</span>
-                <span className="font-medium">
+                <span className="font-semibold">
                   ₹{quotation.deliveryCharge.toLocaleString()}
                 </span>
               </div>
-              <div className="border-t border-border pt-2 flex justify-between font-bold">
+              <div
+                className="border-t pt-3 flex justify-between font-bold text-base"
+                style={{ borderColor: "oklch(0.32 0.05 255)" }}
+              >
                 <span>Total</span>
                 <span className="text-primary">
                   ₹{quotation.totalPrice.toLocaleString()}
@@ -147,7 +162,7 @@ function QuoteDetailModal({
               </div>
             </div>
             {quotation.notes && (
-              <p className="text-sm text-muted-foreground bg-muted/20 rounded-lg p-3">
+              <p className="text-sm text-muted-foreground bg-muted/20 rounded-lg p-3 italic">
                 {quotation.notes}
               </p>
             )}
@@ -175,7 +190,7 @@ function QuoteDetailModal({
                 <Button
                   onClick={handleReject}
                   variant="outline"
-                  className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+                  className="flex-1 border-red-500/40 text-red-400 hover:bg-red-500/10"
                   disabled={reject.isPending}
                   data-ocid="requests_table.reject_button"
                 >
@@ -265,128 +280,191 @@ function NewRequestForm() {
     setForm((prev) => ({ ...prev, [field]: value }));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-      <div className="grid gap-1.5">
-        <Label>Box Type</Label>
-        <Select
-          value={form.boxType}
-          onValueChange={(v) => update("boxType", v)}
-        >
-          <SelectTrigger data-ocid="quote_form.box_type_select">
-            <SelectValue placeholder="Select box type..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Wooden">Wooden</SelectItem>
-            <SelectItem value="Plastic">Plastic</SelectItem>
-            <SelectItem value="Custom">Custom</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+    <div
+      className="rounded-2xl p-6 md:p-8 max-w-2xl"
+      style={{
+        background: "oklch(0.20 0.04 255)",
+        border: "1px solid oklch(0.28 0.04 255)",
+        boxShadow: "0 4px 32px oklch(0 0 0 / 0.3)",
+      }}
+    >
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Box Type */}
+        <div className="grid gap-2">
+          <Label className="text-sm font-semibold text-foreground/80">
+            Box Type
+          </Label>
+          <Select
+            value={form.boxType}
+            onValueChange={(v) => update("boxType", v)}
+          >
+            <SelectTrigger
+              className="border-border/60 focus:border-primary"
+              data-ocid="quote_form.box_type_select"
+            >
+              <SelectValue placeholder="Select box type..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Wooden">🪵 Wooden</SelectItem>
+              <SelectItem value="Plastic">🧴 Plastic</SelectItem>
+              <SelectItem value="Custom">✨ Custom Design</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="grid gap-1.5">
-        <Label>Dimensions (mm)</Label>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
+        {/* Dimensions */}
+        <div className="grid gap-2">
+          <Label className="text-sm font-semibold text-foreground/80">
+            Dimensions (mm)
+          </Label>
+          <div className="grid grid-cols-3 gap-3">
             <Input
               placeholder="Length"
               type="number"
               value={form.length}
               onChange={(e) => update("length", e.target.value)}
+              className="border-border/60 focus:border-primary"
               data-ocid="quote_form.length_input"
             />
-          </div>
-          <div>
             <Input
               placeholder="Width"
               type="number"
               value={form.width}
               onChange={(e) => update("width", e.target.value)}
+              className="border-border/60 focus:border-primary"
               data-ocid="quote_form.width_input"
             />
-          </div>
-          <div>
             <Input
               placeholder="Height"
               type="number"
               value={form.height}
               onChange={(e) => update("height", e.target.value)}
+              className="border-border/60 focus:border-primary"
               data-ocid="quote_form.height_input"
             />
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-1.5">
-          <Label>Material</Label>
+        {/* Material + Quantity */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label className="text-sm font-semibold text-foreground/80">
+              Material
+            </Label>
+            <Input
+              placeholder="e.g. Plywood 18mm"
+              value={form.material}
+              onChange={(e) => update("material", e.target.value)}
+              className="border-border/60 focus:border-primary"
+              data-ocid="quote_form.material_input"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label className="text-sm font-semibold text-foreground/80">
+              Quantity
+            </Label>
+            <Input
+              placeholder="e.g. 50"
+              type="number"
+              value={form.quantity}
+              onChange={(e) => update("quantity", e.target.value)}
+              className="border-border/60 focus:border-primary"
+              data-ocid="quote_form.quantity_input"
+            />
+          </div>
+        </div>
+
+        {/* Delivery Location */}
+        <div className="grid gap-2">
+          <Label className="text-sm font-semibold text-foreground/80">
+            Delivery Location
+          </Label>
           <Input
-            placeholder="e.g. MS Steel 2mm, Plywood 18mm"
-            value={form.material}
-            onChange={(e) => update("material", e.target.value)}
-            data-ocid="quote_form.material_input"
+            placeholder="e.g. Mumbai, Maharashtra"
+            value={form.deliveryLocation}
+            onChange={(e) => update("deliveryLocation", e.target.value)}
+            className="border-border/60 focus:border-primary"
+            data-ocid="quote_form.delivery_location_input"
           />
         </div>
-        <div className="grid gap-1.5">
-          <Label>Quantity</Label>
-          <Input
-            placeholder="e.g. 50"
-            type="number"
-            value={form.quantity}
-            onChange={(e) => update("quantity", e.target.value)}
-            data-ocid="quote_form.quantity_input"
-          />
-        </div>
-      </div>
 
-      <div className="grid gap-1.5">
-        <Label>Delivery Location</Label>
-        <Input
-          placeholder="e.g. Mumbai, Maharashtra"
-          value={form.deliveryLocation}
-          onChange={(e) => update("deliveryLocation", e.target.value)}
-          data-ocid="quote_form.delivery_location_input"
-        />
-      </div>
-
-      <div className="grid gap-1.5">
-        <Label>Drawing / Photo (optional)</Label>
-        <label
-          className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center gap-2 cursor-pointer hover:border-primary/50 transition-colors"
-          data-ocid="quote_form.upload_button"
-        >
-          <Upload className="w-8 h-8 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            {file ? file.name : "Click to upload drawing or photo"}
-          </span>
-          {uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-              <div
-                className="bg-primary h-1.5 rounded-full transition-all"
-                style={{ width: `${uploadProgress}%` }}
-              />
+        {/* Upload */}
+        <div className="grid gap-2">
+          <Label className="text-sm font-semibold text-foreground/80">
+            Drawing / Photo{" "}
+            <span className="font-normal text-muted-foreground">
+              (optional)
+            </span>
+          </Label>
+          <label
+            className="rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer transition-all"
+            style={{
+              border: "2px dashed oklch(0.35 0.05 255)",
+              background: "oklch(0.18 0.03 255)",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor =
+                "oklch(0.7 0.2 44 / 0.5)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor =
+                "oklch(0.35 0.05 255)";
+            }}
+            data-ocid="quote_form.upload_button"
+          >
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{ background: "oklch(0.25 0.04 255)" }}
+            >
+              <Upload className="w-5 h-5 text-primary" />
             </div>
-          )}
-          <input
-            type="file"
-            className="hidden"
-            accept="image/*,.pdf,.dwg"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
-      </div>
+            <div className="text-center">
+              <p className="text-sm font-medium">
+                {file ? file.name : "Click to upload"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                PNG, JPG, PDF, DWG supported
+              </p>
+            </div>
+            {uploadProgress > 0 && uploadProgress < 100 && (
+              <div
+                className="w-full rounded-full h-1.5 mt-1"
+                style={{ background: "oklch(0.25 0.04 255)" }}
+              >
+                <div
+                  className="bg-primary h-1.5 rounded-full transition-all"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            )}
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*,.pdf,.dwg"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        </div>
 
-      <Button
-        type="submit"
-        className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
-        disabled={submit.isPending}
-        data-ocid="quote_form.submit_button"
-      >
-        {submit.isPending ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : null}
-        {submit.isPending ? "Submitting..." : "Submit Quote Request"}
-      </Button>
-    </form>
+        <Button
+          type="submit"
+          className="w-full sm:w-auto px-8 py-2.5 font-semibold text-sm"
+          style={{
+            background:
+              "linear-gradient(135deg, oklch(0.7 0.2 44), oklch(0.65 0.22 38))",
+            color: "white",
+            boxShadow: "0 4px 20px oklch(0.7 0.2 44 / 0.35)",
+          }}
+          disabled={submit.isPending}
+          data-ocid="quote_form.submit_button"
+        >
+          {submit.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : null}
+          {submit.isPending ? "Submitting..." : "🚀 Submit Quote Request"}
+        </Button>
+      </form>
+    </div>
   );
 }
 
@@ -418,10 +496,26 @@ function ProfileTab({ profile }: { profile: CustomerProfile | null }) {
     return <p className="text-muted-foreground">Profile not found.</p>;
   }
 
+  const profileFields: [keyof CustomerProfile, string, string][] = [
+    ["companyName", "Company Name", "🏢"],
+    ["gstNumber", "GST Number", "📋"],
+    ["email", "Email", "📧"],
+    ["phone", "Phone", "📞"],
+    ["contactName", "Contact Name", "👤"],
+    ["address", "Address", "📍"],
+  ];
+
   return (
     <div className="max-w-xl space-y-6">
       {editing ? (
-        <div className="space-y-4">
+        <div
+          className="rounded-2xl p-6 space-y-5"
+          style={{
+            background: "oklch(0.20 0.04 255)",
+            border: "1px solid oklch(0.28 0.04 255)",
+          }}
+        >
+          <h3 className="font-semibold text-base">Edit Profile</h3>
           {(
             [
               ["companyName", "Company Name"],
@@ -432,29 +526,36 @@ function ProfileTab({ profile }: { profile: CustomerProfile | null }) {
             ] as [keyof CustomerProfile, string][]
           ).map(([field, label]) => (
             <div key={field} className="grid gap-1.5">
-              <Label>{label}</Label>
+              <Label className="text-sm text-foreground/70">{label}</Label>
               <Input
                 value={form[field]}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, [field]: e.target.value }))
                 }
+                className="border-border/60 focus:border-primary"
               />
             </div>
           ))}
           <div className="grid gap-1.5">
-            <Label>Address</Label>
+            <Label className="text-sm text-foreground/70">Address</Label>
             <Textarea
               value={form.address}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, address: e.target.value }))
               }
               rows={2}
+              className="border-border/60 focus:border-primary"
             />
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-2">
             <Button
               onClick={handleSave}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className="font-semibold"
+              style={{
+                background:
+                  "linear-gradient(135deg, oklch(0.7 0.2 44), oklch(0.65 0.22 38))",
+                color: "white",
+              }}
               disabled={save.isPending}
               data-ocid="customer_dashboard.profile_tab"
             >
@@ -463,32 +564,88 @@ function ProfileTab({ profile }: { profile: CustomerProfile | null }) {
               ) : null}
               Save Changes
             </Button>
-            <Button variant="outline" onClick={() => setEditing(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setEditing(false)}
+              className="border-border/60"
+            >
               Cancel
             </Button>
           </div>
         </div>
       ) : (
         <>
-          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-            {[
-              ["Company", profile.companyName],
-              ["GST Number", profile.gstNumber],
-              ["Email", profile.email],
-              ["Phone", profile.phone],
-              ["Contact", profile.contactName],
-              ["Address", profile.address],
-            ].map(([label, value]) => (
-              <div key={label} className="flex gap-4">
-                <span className="text-sm text-muted-foreground w-28 shrink-0">
-                  {label}
-                </span>
-                <span className="text-sm font-medium break-all">{value}</span>
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              border: "1px solid oklch(0.28 0.04 255)",
+              boxShadow: "0 4px 24px oklch(0 0 0 / 0.25)",
+            }}
+          >
+            {/* Profile header */}
+            <div
+              className="px-6 py-5"
+              style={{
+                background:
+                  "linear-gradient(135deg, oklch(0.22 0.05 255), oklch(0.20 0.04 255))",
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, oklch(0.7 0.2 44), oklch(0.65 0.22 38))",
+                    color: "white",
+                  }}
+                >
+                  {profile.companyName.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-bold text-lg font-display">
+                    {profile.companyName}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {profile.email}
+                  </p>
+                </div>
               </div>
-            ))}
+            </div>
+
+            {/* Profile fields */}
+            <div
+              className="divide-y"
+              style={{
+                background: "oklch(0.20 0.04 255)",
+                borderColor: "oklch(0.28 0.04 255)",
+              }}
+            >
+              {profileFields.map(([field, label, icon]) => (
+                <div
+                  key={field}
+                  className="flex items-start gap-4 px-6 py-4"
+                  style={{ borderColor: "oklch(0.26 0.04 255)" }}
+                >
+                  <span className="text-base mt-0.5">{icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground mb-0.5">
+                      {label}
+                    </p>
+                    <p className="text-sm font-medium break-all">
+                      {profile[field] || "—"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <Button variant="outline" onClick={() => setEditing(true)}>
-            Edit Profile
+
+          <Button
+            variant="outline"
+            onClick={() => setEditing(true)}
+            className="border-primary/40 text-primary hover:bg-primary/10"
+          >
+            ✏️ Edit Profile
           </Button>
         </>
       )}
@@ -496,7 +653,11 @@ function ProfileTab({ profile }: { profile: CustomerProfile | null }) {
   );
 }
 
-export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
+export function CustomerDashboard({
+  onNavigate,
+  emailProfile,
+  onEmailLogout,
+}: CustomerDashboardProps) {
   const [activeTab, setActiveTab] = useState<"requests" | "new" | "profile">(
     "requests",
   );
@@ -504,21 +665,36 @@ export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
     null,
   );
   const { data: requests, isLoading } = useGetMyQuoteRequests();
-  const { data: profile } = useGetMyProfile();
+  const { data: fetchedProfile } = useGetMyProfile();
+  const profile = emailProfile ?? fetchedProfile;
   const { clear } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   const handleLogout = async () => {
+    if (onEmailLogout) {
+      onEmailLogout();
+      return;
+    }
     await clear();
     queryClient.clear();
     onNavigate("/");
   };
 
+  // Compute stats
+  const totalRequests = requests?.length ?? 0;
+  const pendingQuotes =
+    requests?.filter((r) =>
+      ["submitted", "under_review", "quote_sent"].includes(r.status),
+    ).length ?? 0;
+  const completedOrders =
+    requests?.filter((r) => ["completed", "delivered"].includes(r.status))
+      .length ?? 0;
+
   const navItems = [
     {
       id: "requests" as const,
       label: "My Requests",
-      icon: List,
+      icon: ClipboardList,
       ocid: "customer_dashboard.my_requests_tab",
     },
     {
@@ -536,35 +712,79 @@ export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div
+      className="min-h-screen flex"
+      style={{ background: "oklch(0.15 0.04 255)" }}
+    >
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 border-r border-border bg-sidebar flex flex-col hidden md:flex">
-        <div className="p-5 border-b border-border">
+      <aside
+        className="w-64 shrink-0 hidden md:flex flex-col"
+        style={{
+          background: "oklch(0.13 0.04 255)",
+          borderRight: "1px solid oklch(0.22 0.04 255)",
+        }}
+      >
+        {/* Logo */}
+        <div
+          className="p-5"
+          style={{ borderBottom: "1px solid oklch(0.22 0.04 255)" }}
+        >
           <img
-            src="/assets/generated/cargivo-logo-transparent.dim_200x60.png"
+            src="/assets/uploads/image-4-1.png"
             alt="Cargivo"
-            className="h-8 w-auto"
+            className="h-10 w-auto"
+            style={{ filter: "drop-shadow(0 0 8px oklch(0.7 0.2 44 / 0.5))" }}
           />
         </div>
-        <div className="p-4 border-b border-border">
-          <div className="text-xs text-muted-foreground mb-0.5">
-            Logged in as
-          </div>
-          <div className="font-medium text-sm truncate">
-            {profile?.companyName || "Customer"}
+
+        {/* User info */}
+        <div
+          className="px-5 py-4"
+          style={{ borderBottom: "1px solid oklch(0.22 0.04 255)" }}
+        >
+          <div
+            className="flex items-center gap-3 p-3 rounded-xl"
+            style={{ background: "oklch(0.18 0.04 255)" }}
+          >
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0"
+              style={{
+                background:
+                  "linear-gradient(135deg, oklch(0.7 0.2 44), oklch(0.65 0.22 38))",
+                color: "white",
+              }}
+            >
+              {(profile?.companyName || "C").charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Logged in as</p>
+              <p className="text-sm font-semibold truncate">
+                {profile?.companyName || "Customer"}
+              </p>
+            </div>
           </div>
         </div>
+
+        {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1">
           {navItems.map((item) => (
             <button
               type="button"
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={
                 activeTab === item.id
-                  ? "bg-primary/20 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
+                  ? {
+                      background:
+                        "linear-gradient(135deg, oklch(0.7 0.2 44 / 0.15), oklch(0.65 0.22 38 / 0.1))",
+                      color: "oklch(0.7 0.2 44)",
+                      borderLeft: "3px solid oklch(0.7 0.2 44)",
+                    }
+                  : {
+                      color: "oklch(0.62 0.03 255)",
+                    }
+              }
               data-ocid={item.ocid}
             >
               <item.icon className="w-4 h-4" />
@@ -572,11 +792,28 @@ export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
             </button>
           ))}
         </nav>
-        <div className="p-3 border-t border-border">
+
+        {/* Logout */}
+        <div
+          className="p-3"
+          style={{ borderTop: "1px solid oklch(0.22 0.04 255)" }}
+        >
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors"
+            style={{ color: "oklch(0.62 0.03 255)" }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background =
+                "oklch(0.20 0.04 255)";
+              (e.currentTarget as HTMLElement).style.color =
+                "oklch(0.85 0.01 255)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = "";
+              (e.currentTarget as HTMLElement).style.color =
+                "oklch(0.62 0.03 255)";
+            }}
           >
             <LogOut className="w-4 h-4" />
             Logout
@@ -585,9 +822,15 @@ export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
       </aside>
 
       {/* Mobile header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-border px-4 h-14 flex items-center justify-between">
+      <div
+        className="md:hidden fixed top-0 left-0 right-0 z-50 px-4 h-14 flex items-center justify-between"
+        style={{
+          background: "oklch(0.13 0.04 255)",
+          borderBottom: "1px solid oklch(0.22 0.04 255)",
+        }}
+      >
         <img
-          src="/assets/generated/cargivo-logo-transparent.dim_200x60.png"
+          src="/assets/uploads/image-4-1.png"
           alt="Cargivo"
           className="h-7 w-auto"
         />
@@ -603,17 +846,26 @@ export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
       {/* Main */}
       <main className="flex-1 overflow-auto md:pt-0 pt-14">
         {/* Mobile nav */}
-        <div className="md:hidden flex border-b border-border">
+        <div
+          className="md:hidden flex"
+          style={{ borderBottom: "1px solid oklch(0.22 0.04 255)" }}
+        >
           {navItems.map((item) => (
             <button
               type="button"
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex-1 py-3 text-xs font-medium flex flex-col items-center gap-1 transition-colors ${
-                activeTab === item.id
-                  ? "text-primary border-b-2 border-primary"
-                  : "text-muted-foreground"
-              }`}
+              className="flex-1 py-3 text-xs font-medium flex flex-col items-center gap-1 transition-colors"
+              style={{
+                color:
+                  activeTab === item.id
+                    ? "oklch(0.7 0.2 44)"
+                    : "oklch(0.62 0.03 255)",
+                borderBottom:
+                  activeTab === item.id
+                    ? "2px solid oklch(0.7 0.2 44)"
+                    : "2px solid transparent",
+              }}
               data-ocid={item.ocid}
             >
               <item.icon className="w-4 h-4" />
@@ -622,71 +874,257 @@ export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
           ))}
         </div>
 
-        <div className="p-6 md:p-8">
+        <div className="p-5 md:p-8 space-y-6">
+          {/* Welcome banner */}
+          <div
+            className="rounded-2xl px-6 py-5 flex items-center justify-between overflow-hidden relative"
+            style={{
+              background:
+                "linear-gradient(135deg, oklch(0.55 0.20 38), oklch(0.48 0.18 44), oklch(0.42 0.16 30))",
+              boxShadow: "0 8px 32px oklch(0.55 0.20 38 / 0.35)",
+            }}
+          >
+            {/* Decorative circles */}
+            <div
+              className="absolute right-0 top-0 w-40 h-40 rounded-full opacity-20"
+              style={{
+                background: "oklch(0.9 0.1 60)",
+                transform: "translate(30%, -40%)",
+              }}
+            />
+            <div
+              className="absolute right-16 bottom-0 w-24 h-24 rounded-full opacity-10"
+              style={{
+                background: "oklch(0.95 0.05 90)",
+                transform: "translateY(40%)",
+              }}
+            />
+            <div className="relative z-10">
+              <p className="text-sm font-medium text-white/70 mb-1">
+                Welcome back 👋
+              </p>
+              <h2 className="text-xl md:text-2xl font-bold text-white font-display">
+                {profile?.companyName || "Customer"}
+              </h2>
+              <p className="text-sm text-white/60 mt-1">
+                Manage your quote requests and orders
+              </p>
+            </div>
+            <div className="relative z-10 hidden sm:block">
+              <Button
+                onClick={() => setActiveTab("new")}
+                className="font-semibold text-sm"
+                style={{
+                  background: "oklch(1 0 0 / 0.15)",
+                  color: "white",
+                  border: "1px solid oklch(1 0 0 / 0.3)",
+                  backdropFilter: "blur(4px)",
+                }}
+                data-ocid="customer_dashboard.new_request_tab"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                New Request
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              {
+                label: "Total Requests",
+                value: totalRequests,
+                icon: ClipboardList,
+                color: "oklch(0.6 0.18 220)",
+                bg: "oklch(0.6 0.18 220 / 0.12)",
+              },
+              {
+                label: "Pending Quotes",
+                value: pendingQuotes,
+                icon: TrendingUp,
+                color: "oklch(0.7 0.2 44)",
+                bg: "oklch(0.7 0.2 44 / 0.12)",
+              },
+              {
+                label: "Completed Orders",
+                value: completedOrders,
+                icon: PackageCheck,
+                color: "oklch(0.65 0.18 145)",
+                bg: "oklch(0.65 0.18 145 / 0.12)",
+              },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl px-5 py-4 flex items-center gap-4"
+                style={{
+                  background: "oklch(0.19 0.04 255)",
+                  border: "1px solid oklch(0.26 0.04 255)",
+                }}
+              >
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: stat.bg }}
+                >
+                  <stat.icon
+                    className="w-5 h-5"
+                    style={{ color: stat.color }}
+                  />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold font-display">
+                    {stat.value}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tab content */}
           {activeTab === "requests" && (
             <div>
-              <h1 className="text-2xl font-bold mb-6">My Quote Requests</h1>
+              <div className="flex items-center justify-between mb-5">
+                <h1 className="text-xl font-bold font-display">
+                  My Quote Requests
+                </h1>
+                <Button
+                  size="sm"
+                  className="font-semibold text-xs"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, oklch(0.7 0.2 44), oklch(0.65 0.22 38))",
+                    color: "white",
+                  }}
+                  onClick={() => setActiveTab("new")}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> New Request
+                </Button>
+              </div>
+
               {isLoading ? (
                 <div
                   className="space-y-3"
                   data-ocid="requests_table.loading_state"
                 >
                   {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-14 w-full" />
+                    <Skeleton key={i} className="h-14 w-full rounded-xl" />
                   ))}
                 </div>
               ) : !requests || requests.length === 0 ? (
                 <div
-                  className="bg-card border border-border rounded-xl p-12 text-center"
+                  className="rounded-2xl p-12 text-center"
+                  style={{
+                    background: "oklch(0.19 0.04 255)",
+                    border: "1px solid oklch(0.26 0.04 255)",
+                  }}
                   data-ocid="requests_table.empty_state"
                 >
-                  <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="font-semibold mb-2">No requests yet</h3>
-                  <p className="text-muted-foreground text-sm mb-4">
+                  <div
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                    style={{ background: "oklch(0.7 0.2 44 / 0.12)" }}
+                  >
+                    <Package
+                      className="w-8 h-8"
+                      style={{ color: "oklch(0.7 0.2 44)" }}
+                    />
+                  </div>
+                  <h3 className="font-bold text-lg mb-2 font-display">
+                    No requests yet
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-5">
                     Submit your first quote request to get started.
                   </p>
                   <Button
                     onClick={() => setActiveTab("new")}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, oklch(0.7 0.2 44), oklch(0.65 0.22 38))",
+                      color: "white",
+                      boxShadow: "0 4px 16px oklch(0.7 0.2 44 / 0.3)",
+                    }}
                   >
                     <Plus className="mr-2 h-4 w-4" /> New Request
                   </Button>
                 </div>
               ) : (
-                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: "oklch(0.19 0.04 255)",
+                    border: "1px solid oklch(0.26 0.04 255)",
+                  }}
+                >
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-border hover:bg-transparent">
-                        <TableHead>Request ID</TableHead>
-                        <TableHead>Box Type</TableHead>
-                        <TableHead>Dimensions</TableHead>
-                        <TableHead>Qty</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Actions</TableHead>
+                      <TableRow
+                        style={{
+                          borderColor: "oklch(0.26 0.04 255)",
+                          background: "oklch(0.17 0.04 255)",
+                        }}
+                      >
+                        <TableHead className="text-xs font-semibold text-muted-foreground">
+                          Request ID
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground">
+                          Box Type
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground hidden sm:table-cell">
+                          Dimensions
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground hidden sm:table-cell">
+                          Qty
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground">
+                          Status
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground hidden md:table-cell">
+                          Date
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-muted-foreground">
+                          Actions
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {requests.map((req, idx) => (
                         <TableRow
                           key={req.id.toString()}
-                          className="border-border"
+                          className="transition-colors"
+                          style={{ borderColor: "oklch(0.24 0.04 255)" }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLElement).style.background =
+                              "oklch(0.21 0.04 255)";
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLElement).style.background =
+                              "";
+                          }}
                           data-ocid={`requests_table.item.${idx + 1}`}
                         >
-                          <TableCell className="font-mono text-xs text-muted-foreground">
-                            REQ-{req.id.toString()}
+                          <TableCell>
+                            <span
+                              className="font-mono text-xs px-2 py-1 rounded-md"
+                              style={{
+                                background: "oklch(0.24 0.04 255)",
+                                color: "oklch(0.7 0.2 44)",
+                              }}
+                            >
+                              REQ-{req.id.toString()}
+                            </span>
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-semibold text-sm">
                             {req.boxType}
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
+                          <TableCell className="text-sm text-muted-foreground hidden sm:table-cell">
                             {req.length}×{req.width}×{req.height}
                           </TableCell>
-                          <TableCell>{req.quantity.toString()}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {req.quantity.toString()}
+                          </TableCell>
                           <TableCell>
                             <StatusBadge status={req.status} />
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
+                          <TableCell className="text-xs text-muted-foreground hidden md:table-cell">
                             {new Date(
                               Number(req.createdAt / BigInt(1_000_000)),
                             ).toLocaleDateString()}
@@ -696,8 +1134,13 @@ export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
                               {req.status === "quote_sent" && (
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="text-xs border-primary/50 text-primary hover:bg-primary/10"
+                                  className="text-xs h-7 px-3 font-semibold"
+                                  style={{
+                                    background:
+                                      "linear-gradient(135deg, oklch(0.7 0.2 44 / 0.2), oklch(0.65 0.22 38 / 0.15))",
+                                    color: "oklch(0.7 0.2 44)",
+                                    border: "1px solid oklch(0.7 0.2 44 / 0.3)",
+                                  }}
                                   onClick={() => setSelectedRequest(req)}
                                   data-ocid={`requests_table.view_quote_button.${idx + 1}`}
                                 >
@@ -714,7 +1157,7 @@ export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="text-xs"
+                                  className="text-xs h-7 px-3 border-border/60"
                                   onClick={() =>
                                     onNavigate(`/invoice/${req.id.toString()}`)
                                   }
@@ -736,18 +1179,28 @@ export function CustomerDashboard({ onNavigate }: CustomerDashboardProps) {
 
           {activeTab === "new" && (
             <div>
-              <h1 className="text-2xl font-bold mb-2">New Quote Request</h1>
-              <p className="text-muted-foreground mb-8">
-                Fill in your box requirements and we'll send you a competitive
-                quote within 10–20 minutes.
-              </p>
+              <div className="mb-6">
+                <h1 className="text-xl font-bold font-display mb-1">
+                  New Quote Request
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Fill in your box requirements and we'll send you a competitive
+                  quote within{" "}
+                  <span className="text-primary font-medium">
+                    10–20 minutes
+                  </span>
+                  .
+                </p>
+              </div>
               <NewRequestForm />
             </div>
           )}
 
           {activeTab === "profile" && (
             <div>
-              <h1 className="text-2xl font-bold mb-8">My Profile</h1>
+              <h1 className="text-xl font-bold font-display mb-6">
+                My Profile
+              </h1>
               <ProfileTab profile={profile ?? null} />
             </div>
           )}
