@@ -177,6 +177,25 @@ actor {
   stable var quotations = Map.empty<Nat, Quotation>();
   stable var orders = Map.empty<Nat, Order>();
   stable var nextRequestId = 1;
+  stable var testAccountSeeded = false;
+
+  // Seed test customer account on first deployment
+  if (not testAccountSeeded) {
+    let testProfile : CustomerProfile = {
+      companyName = "Test Company Pvt Ltd";
+      gstNumber = "27AAACT2727Q1Z5";
+      address = "400001 | Maharashtra | Mumbai | Near Station | Test Building | Shop 1";
+      phone = "9876543210";
+      contactName = "Test User";
+      email = "test@cargivo.com";
+    };
+    let testRecord : EmailUserRecord = {
+      passwordHash = "Test@1234";
+      profile = testProfile;
+    };
+    emailUsers.add("test@cargivo.com", testRecord);
+    testAccountSeeded := true;
+  };
 
   //-------------- Admin Email Auth Helpers ----------------//
 
