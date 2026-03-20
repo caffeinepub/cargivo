@@ -66,6 +66,7 @@ interface CustomerDashboardProps {
 
 interface FormState {
   boxType: string;
+  material: string;
   length: string;
   width: string;
   height: string;
@@ -80,6 +81,7 @@ interface FormState {
 
 const emptyForm: FormState = {
   boxType: "",
+  material: "",
   length: "",
   width: "",
   height: "",
@@ -275,6 +277,10 @@ function NewRequestForm({
       toast.error("Please fill in all required fields");
       return;
     }
+    if (form.boxType === "Custom" && !form.material) {
+      toast.error("Please specify the material for custom box");
+      return;
+    }
     try {
       let drawingFileId: string | undefined;
       if (file) {
@@ -288,7 +294,7 @@ function NewRequestForm({
         length: Number.parseFloat(form.length),
         width: Number.parseFloat(form.width),
         height: Number.parseFloat(form.height),
-        material: "",
+        material: form.material,
         quantity: BigInt(Number.parseInt(form.quantity)),
         deliveryLocation,
         drawingFileId,
@@ -333,6 +339,22 @@ function NewRequestForm({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Material - only for Custom */}
+      {form.boxType === "Custom" && (
+        <div className="grid gap-2">
+          <Label className="text-sm font-semibold text-foreground/80">
+            Material <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            placeholder="e.g. Stainless Steel, Aluminum, PVC..."
+            value={form.material}
+            onChange={(e) => update("material", e.target.value)}
+            className="border-border/60 focus:border-primary"
+            data-ocid="quote_form.material_input"
+          />
+        </div>
+      )}
 
       {/* Dimensions */}
       <div className="grid gap-2">
@@ -544,11 +566,13 @@ function PastOrdersPanel({
   isLoading,
   onReorder,
   onNavigate,
+  onRefresh,
 }: {
   requests: QuoteRequest[] | undefined;
   isLoading: boolean;
   onReorder: (form: FormState) => void;
   onNavigate: (path: string) => void;
+  onRefresh: () => void;
 }) {
   return (
     <div
@@ -568,17 +592,30 @@ function PastOrdersPanel({
           borderBottom: "1px solid oklch(0.26 0.04 255)",
         }}
       >
-        <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: "oklch(0.7 0.2 44 / 0.15)" }}
-          >
-            <Package
-              className="w-3.5 h-3.5"
-              style={{ color: "oklch(0.7 0.2 44)" }}
-            />
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: "oklch(0.7 0.2 44 / 0.15)" }}
+            >
+              <Package
+                className="w-3.5 h-3.5"
+                style={{ color: "oklch(0.7 0.2 44)" }}
+              />
+            </div>
+            <h3 className="font-bold text-sm font-display">Past Orders</h3>
           </div>
-          <h3 className="font-bold text-sm font-display">Past Orders</h3>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 rounded-lg"
+            style={{ color: "oklch(0.7 0.2 44)" }}
+            onClick={onRefresh}
+            title="Refresh orders"
+            data-ocid="past_orders.refresh_button"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </Button>
         </div>
       </div>
 
@@ -674,6 +711,7 @@ function PastOrdersPanel({
                         landmark: "",
                         building: "",
                         shopNo: "",
+                        material: "",
                       })
                     }
                     data-ocid={`past_orders.reorder_button.${idx + 1}`}
@@ -898,7 +936,7 @@ export function CustomerDashboard({
     null,
   );
   const [quoteForm, setQuoteForm] = useState<FormState>(emptyForm);
-  const { data: requests, isLoading } = useGetMyQuoteRequests();
+  const { data: requests, isLoading, refetch } = useGetMyQuoteRequests();
   const { data: fetchedProfile } = useGetMyProfile();
   const profile = emailProfile ?? fetchedProfile;
   const { clear } = useInternetIdentity();
@@ -1457,6 +1495,7 @@ export function CustomerDashboard({
                     isLoading={isLoading}
                     onReorder={handleReorder}
                     onNavigate={onNavigate}
+                    onRefresh={refetch}
                   />
                 </div>
               </div>

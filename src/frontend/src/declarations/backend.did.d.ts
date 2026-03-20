@@ -162,6 +162,10 @@ export interface _SERVICE {
   'getInvoiceData' : ActorMethod<[bigint], [] | [InvoiceData]>,
   'getMyProfile' : ActorMethod<[], [] | [CustomerProfile]>,
   'getMyQuoteRequests' : ActorMethod<[], Array<QuoteRequest>>,
+  'getMyQuoteRequestsWithEmail' : ActorMethod<
+    [string, string],
+    Array<QuoteRequest>
+  >,
   'getOrder' : ActorMethod<[bigint], [] | [Order]>,
   'getQuotation' : ActorMethod<[bigint], [] | [Quotation]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [CustomerProfile]>,
@@ -180,11 +184,21 @@ export interface _SERVICE {
   'saveCallerUserProfile' : ActorMethod<[CustomerProfile], undefined>,
   'sendQuotation' : ActorMethod<[QuotationArgs], undefined>,
   'submitQuoteRequest' : ActorMethod<[QuoteRequestArgs], bigint>,
+  'submitQuoteRequestWithEmail' : ActorMethod<
+    [string, string, QuoteRequestArgs],
+    bigint
+  >,
   'updateEmailUserProfile' : ActorMethod<
     [EmailProfileUpdateArgs],
     UpdateEmailUserProfileResult
   >,
   'updateOrderStatus' : ActorMethod<[OrderUpdateArgs], undefined>,
+  'getAllQuoteRequestsAdmin' : ActorMethod<[string, string], Array<QuoteRequest>>,
+  'getAllCustomersAdmin' : ActorMethod<[string, string], Array<[Principal, CustomerProfile]>>,
+  'sendQuotationAdmin' : ActorMethod<[string, string, QuotationArgs], undefined>,
+  'markAdvancePaidAdmin' : ActorMethod<[string, string, bigint], undefined>,
+  'updateOrderStatusAdmin' : ActorMethod<[string, string, OrderUpdateArgs], undefined>,
+  'updateRequestStatusAdmin' : ActorMethod<[string, string, bigint, string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

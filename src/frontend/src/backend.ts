@@ -262,6 +262,7 @@ export interface backendInterface {
     getInvoiceData(requestId: bigint): Promise<InvoiceData | null>;
     getMyProfile(): Promise<CustomerProfile | null>;
     getMyQuoteRequests(): Promise<Array<QuoteRequest>>;
+    getMyQuoteRequestsWithEmail(email: string, password: string): Promise<Array<QuoteRequest>>;
     getOrder(requestId: bigint): Promise<Order | null>;
     getQuotation(requestId: bigint): Promise<Quotation | null>;
     getUserProfile(user: Principal): Promise<CustomerProfile | null>;
@@ -275,9 +276,14 @@ export interface backendInterface {
     sendQuotation(args: QuotationArgs): Promise<void>;
     submitQuoteRequest(args: QuoteRequestArgs): Promise<bigint>;
     submitQuoteRequestWithEmail(email: string, password: string, args: QuoteRequestArgs): Promise<bigint>;
-    getMyQuoteRequestsWithEmail(email: string, password: string): Promise<Array<QuoteRequest>>;
     updateEmailUserProfile(args: EmailProfileUpdateArgs): Promise<UpdateEmailUserProfileResult>;
     updateOrderStatus(args: OrderUpdateArgs): Promise<void>;
+    getAllQuoteRequestsAdmin(email: string, password: string): Promise<Array<QuoteRequest>>;
+    getAllCustomersAdmin(email: string, password: string): Promise<Array<[Principal, CustomerProfile]>>;
+    sendQuotationAdmin(email: string, password: string, args: QuotationArgs): Promise<void>;
+    markAdvancePaidAdmin(email: string, password: string, requestId: bigint): Promise<void>;
+    updateOrderStatusAdmin(email: string, password: string, args: OrderUpdateArgs): Promise<void>;
+    updateRequestStatusAdmin(email: string, password: string, requestId: bigint, status: string): Promise<void>;
 }
 import type { CustomerProfile as _CustomerProfile, GetEmailUserProfileResult as _GetEmailUserProfileResult, InvoiceData as _InvoiceData, LoginEmailUserResult as _LoginEmailUserResult, Order as _Order, OrderUpdateArgs as _OrderUpdateArgs, Quotation as _Quotation, QuotationArgs as _QuotationArgs, QuoteRequest as _QuoteRequest, QuoteRequestArgs as _QuoteRequestArgs, RegisterEmailUserResult as _RegisterEmailUserResult, UpdateEmailUserProfileResult as _UpdateEmailUserProfileResult, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -520,6 +526,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getMyQuoteRequestsWithEmail(arg0: string, arg1: string): Promise<Array<QuoteRequest>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyQuoteRequestsWithEmail(arg0, arg1);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyQuoteRequestsWithEmail(arg0, arg1);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getOrder(arg0: bigint): Promise<Order | null> {
         if (this.processError) {
             try {
@@ -688,32 +708,18 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async submitQuoteRequestWithEmail(email: string, password: string, arg0: QuoteRequestArgs): Promise<bigint> {
+    async submitQuoteRequestWithEmail(arg0: string, arg1: string, arg2: QuoteRequestArgs): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.submitQuoteRequestWithEmail(email, password, to_candid_QuoteRequestArgs_n33(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.submitQuoteRequestWithEmail(arg0, arg1, to_candid_QuoteRequestArgs_n33(this._uploadFile, this._downloadFile, arg2));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.submitQuoteRequestWithEmail(email, password, to_candid_QuoteRequestArgs_n33(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.submitQuoteRequestWithEmail(arg0, arg1, to_candid_QuoteRequestArgs_n33(this._uploadFile, this._downloadFile, arg2));
             return result;
-        }
-    }
-    async getMyQuoteRequestsWithEmail(email: string, password: string): Promise<Array<QuoteRequest>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getMyQuoteRequestsWithEmail(email, password);
-                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getMyQuoteRequestsWithEmail(email, password);
-            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
     async updateEmailUserProfile(arg0: EmailProfileUpdateArgs): Promise<UpdateEmailUserProfileResult> {
@@ -741,6 +747,90 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateOrderStatus(to_candid_OrderUpdateArgs_n37(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async getAllQuoteRequestsAdmin(arg0: string, arg1: string): Promise<Array<QuoteRequest>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllQuoteRequestsAdmin(arg0, arg1);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllQuoteRequestsAdmin(arg0, arg1);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllCustomersAdmin(arg0: string, arg1: string): Promise<Array<[Principal, CustomerProfile]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllCustomersAdmin(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllCustomersAdmin(arg0, arg1);
+            return result;
+        }
+    }
+    async sendQuotationAdmin(arg0: string, arg1: string, arg2: QuotationArgs): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.sendQuotationAdmin(arg0, arg1, to_candid_QuotationArgs_n31(this._uploadFile, this._downloadFile, arg2));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.sendQuotationAdmin(arg0, arg1, to_candid_QuotationArgs_n31(this._uploadFile, this._downloadFile, arg2));
+            return result;
+        }
+    }
+    async markAdvancePaidAdmin(arg0: string, arg1: string, arg2: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.markAdvancePaidAdmin(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.markAdvancePaidAdmin(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async updateOrderStatusAdmin(arg0: string, arg1: string, arg2: OrderUpdateArgs): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateOrderStatusAdmin(arg0, arg1, to_candid_OrderUpdateArgs_n37(this._uploadFile, this._downloadFile, arg2));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateOrderStatusAdmin(arg0, arg1, to_candid_OrderUpdateArgs_n37(this._uploadFile, this._downloadFile, arg2));
+            return result;
+        }
+    }
+    async updateRequestStatusAdmin(arg0: string, arg1: string, arg2: bigint, arg3: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateRequestStatusAdmin(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateRequestStatusAdmin(arg0, arg1, arg2, arg3);
             return result;
         }
     }

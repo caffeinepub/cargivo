@@ -12,6 +12,7 @@ import type {
 } from "../backend.d";
 import type { UserRole } from "../backend.d";
 import { useActor } from "./useActor";
+import { useAdminAuth } from "./useAdminAuth";
 import { useEmailAuth } from "./useEmailAuth";
 
 export type {
@@ -79,6 +80,166 @@ export function useGetMyQuoteRequests() {
   });
 }
 
+// Admin email-authenticated queries
+export function useAdminGetAllQuoteRequests() {
+  const { actor, isFetching: actorFetching } = useActor();
+  const { adminSession } = useAdminAuth();
+  const query = useQuery<QuoteRequest[]>({
+    queryKey: ["adminAllQuoteRequests", adminSession?.email],
+    queryFn: async () => {
+      if (!actor || !adminSession) return [];
+      try {
+        const result = await actor.getAllQuoteRequestsAdmin(
+          adminSession.email,
+          adminSession.password,
+        );
+        console.log("[Admin] getAllQuoteRequestsAdmin result:", result);
+        return result;
+      } catch (err) {
+        console.error("[Admin] getAllQuoteRequestsAdmin error:", err);
+        throw err;
+      }
+    },
+    enabled: !!actor && !actorFetching && !!adminSession,
+    refetchInterval: 30000,
+    retry: 1,
+  });
+  return {
+    ...query,
+    isError: query.isError,
+    error: query.error,
+  };
+}
+
+export function useAdminGetAllCustomers() {
+  const { actor, isFetching: actorFetching } = useActor();
+  const { adminSession } = useAdminAuth();
+  const query = useQuery<CustomerProfile[]>({
+    queryKey: ["adminAllEmailCustomers", adminSession?.email],
+    queryFn: async () => {
+      if (!actor || !adminSession) return [];
+      try {
+        const result = await actor.getAllCustomersAdmin(
+          adminSession.email,
+          adminSession.password,
+        );
+        console.log("[Admin] getAllCustomersAdmin result:", result);
+        return result.map(([, profile]) => profile);
+      } catch (err) {
+        console.error("[Admin] getAllCustomersAdmin error:", err);
+        throw err;
+      }
+    },
+    enabled: !!actor && !actorFetching && !!adminSession,
+    retry: 1,
+  });
+  return {
+    ...query,
+    isError: query.isError,
+    error: query.error,
+  };
+}
+
+export function useAdminGetOrder(requestId: bigint | null) {
+  const { actor, isFetching: actorFetching } = useActor();
+  const { adminSession } = useAdminAuth();
+  return useQuery<Order | null>({
+    queryKey: ["adminOrder", requestId?.toString()],
+    queryFn: async () => {
+      if (!actor || !adminSession || requestId === null) return null;
+      return actor.getOrder(requestId);
+    },
+    enabled: !!actor && !actorFetching && !!adminSession && requestId !== null,
+  });
+}
+
+export function useAdminSendQuotation() {
+  const { actor } = useActor();
+  const { adminSession } = useAdminAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: QuotationArgs) => {
+      if (!actor || !adminSession)
+        throw new Error("Not authenticated as admin");
+      return actor.sendQuotationAdmin(
+        adminSession.email,
+        adminSession.password,
+        args,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminAllQuoteRequests"] });
+    },
+  });
+}
+
+export function useAdminMarkAdvancePaid() {
+  const { actor } = useActor();
+  const { adminSession } = useAdminAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (requestId: bigint) => {
+      if (!actor || !adminSession)
+        throw new Error("Not authenticated as admin");
+      return actor.markAdvancePaidAdmin(
+        adminSession.email,
+        adminSession.password,
+        requestId,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminAllQuoteRequests"] });
+      queryClient.invalidateQueries({ queryKey: ["adminOrder"] });
+    },
+  });
+}
+
+export function useAdminUpdateOrderStatus() {
+  const { actor } = useActor();
+  const { adminSession } = useAdminAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: OrderUpdateArgs) => {
+      if (!actor || !adminSession)
+        throw new Error("Not authenticated as admin");
+      return actor.updateOrderStatusAdmin(
+        adminSession.email,
+        adminSession.password,
+        args,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminAllQuoteRequests"] });
+      queryClient.invalidateQueries({ queryKey: ["adminOrder"] });
+    },
+  });
+}
+
+export function useAdminUpdateRequestStatus() {
+  const { actor } = useActor();
+  const { adminSession } = useAdminAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      requestId,
+      status,
+    }: { requestId: bigint; status: string }) => {
+      if (!actor || !adminSession)
+        throw new Error("Not authenticated as admin");
+      return actor.updateRequestStatusAdmin(
+        adminSession.email,
+        adminSession.password,
+        requestId,
+        status,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminAllQuoteRequests"] });
+    },
+  });
+}
+
+// Legacy II-based admin queries (kept for backward compat)
 export function useGetAllQuoteRequests() {
   const { actor, isFetching: actorFetching } = useActor();
   return useQuery<QuoteRequest[]>({
@@ -224,11 +385,16 @@ export function useRejectQuote() {
 
 export function useSendQuotation() {
   const { actor } = useActor();
+  const { adminSession } = useAdminAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (args: QuotationArgs) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.sendQuotation(args);
+      if (!actor || !adminSession) throw new Error("Not authenticated");
+      return actor.sendQuotationAdmin(
+        adminSession.email,
+        adminSession.password,
+        args,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allQuoteRequests"] });
@@ -238,11 +404,16 @@ export function useSendQuotation() {
 
 export function useMarkAdvancePaid() {
   const { actor } = useActor();
+  const { adminSession } = useAdminAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (requestId: bigint) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.markAdvancePaid(requestId);
+      if (!actor || !adminSession) throw new Error("Not authenticated");
+      return actor.markAdvancePaidAdmin(
+        adminSession.email,
+        adminSession.password,
+        requestId,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allQuoteRequests"] });
@@ -252,11 +423,16 @@ export function useMarkAdvancePaid() {
 
 export function useUpdateOrderStatus() {
   const { actor } = useActor();
+  const { adminSession } = useAdminAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (args: OrderUpdateArgs) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.updateOrderStatus(args);
+      if (!actor || !adminSession) throw new Error("Not authenticated");
+      return actor.updateOrderStatusAdmin(
+        adminSession.email,
+        adminSession.password,
+        args,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allQuoteRequests"] });

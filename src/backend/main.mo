@@ -9,12 +9,14 @@ import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
 
-
-
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
   include MixinStorage();
+
+  // Admin credentials (default: admin@cargivo.com / Cargivo@2024)
+  stable var adminEmail : Text = "admin@cargivo.com";
+  stable var adminPassword : Text = "Cargivo@2024";
 
   type CustomerProfile = {
     companyName : Text;
@@ -163,13 +165,242 @@ actor {
     #errWrongPassword : Text;
   };
 
-  let customerProfiles = Map.empty<Principal, CustomerProfile>();
-  let emailUsers = Map.empty<Text, EmailUserRecord>();
-  let emailRequestOwners = Map.empty<Nat, Text>();  // requestId -> email
-  let quoteRequests = Map.empty<Nat, QuoteRequest>();
-  let quotations = Map.empty<Nat, Quotation>();
-  let orders = Map.empty<Nat, Order>();
-  var nextRequestId = 1;
+  type AdminLoginResult = {
+    #ok;
+    #errInvalid : Text;
+  };
+
+  stable var customerProfiles = Map.empty<Principal, CustomerProfile>();
+  stable var emailUsers = Map.empty<Text, EmailUserRecord>();
+  stable var emailRequestOwners = Map.empty<Nat, Text>(); // requestId -> email
+  stable var quoteRequests = Map.empty<Nat, QuoteRequest>();
+  stable var quotations = Map.empty<Nat, Quotation>();
+  stable var orders = Map.empty<Nat, Order>();
+  stable var nextRequestId = 1;
+
+  //-------------- Admin Email Auth Helpers ----------------//
+
+  func isAdminCredentials(email : Text, password : Text) : Bool {
+    email == adminEmail and password == adminPassword;
+  };
+
+  public shared func verifyAdminLogin(email : Text, password : Text) : async AdminLoginResult {
+    if (isAdminCredentials(email, password)) { #ok } else { #errInvalid("Invalid admin credentials") };
+  };
+
+  public shared func changeAdminPassword(email : Text, oldPassword : Text, newPassword : Text) : async AdminLoginResult {
+    if (not isAdminCredentials(email, oldPassword)) {
+      return #errInvalid("Current credentials are incorrect");
+    };
+    adminPassword := newPassword;
+    #ok;
+  };
+
+  //-------------- Admin-password versions of admin APIs ----------------//
+
+  public query func getAllQuoteRequestsAdmin(email : Text, password : Text) : async [QuoteRequest] {
+    if (not isAdminCredentials(email, password)) {
+      Runtime.trap("Unauthorized: Invalid admin credentials");
+    };
+    quoteRequests.values().toArray();
+  };
+
+  public query func getAllCustomersAdmin(email : Text, password : Text) : async [(Principal, CustomerProfile)] {
+    if (not isAdminCredentials(email, password)) {
+      Runtime.trap("Unauthorized: Invalid admin credentials");
+    };
+    let customerArray = customerProfiles.toArray();
+    customerArray.sort(
+      func(a, b) { CustomerProfile.compareByCompanyName(a.1, b.1) }
+    );
+  };
+
+  // Also include email-registered customers
+  public query func getAllEmailCustomersAdmin(email : Text, password : Text) : async [CustomerProfile] {
+    if (not isAdminCredentials(email, password)) {
+      Runtime.trap("Unauthorized: Invalid admin credentials");
+    };
+    emailUsers.values().toArray().map(func(r : EmailUserRecord) : CustomerProfile { r.profile });
+  };
+
+  public shared func sendQuotationAdmin(email : Text, password : Text, args : QuotationArgs) : async () {
+    if (not isAdminCredentials(email, password)) {
+      Runtime.trap("Unauthorized: Invalid admin credentials");
+    };
+    let request = switch (quoteRequests.get(args.requestId)) {
+      case (null) { Runtime.trap("Quote request not found") };
+      case (?r) { r };
+    };
+    let totalPrice = args.basePrice + args.deliveryCharge + (args.basePrice * (args.gstPercent / 100.0));
+    let quotation : Quotation = {
+      requestId = args.requestId;
+      basePrice = args.basePrice;
+      gstPercent = args.gstPercent;
+      totalPrice;
+      deliveryCharge = args.deliveryCharge;
+      validUntil = args.validUntil;
+      notes = args.notes;
+      sentAt = Time.now();
+    };
+    quotations.add(args.requestId, quotation);
+    let updatedRequest : QuoteRequest = {
+      id = request.id;
+      customerId = request.customerId;
+      boxType = request.boxType;
+      length = request.length;
+      width = request.width;
+      height = request.height;
+      material = request.material;
+      quantity = request.quantity;
+      drawingFileId = request.drawingFileId;
+      deliveryLocation = request.deliveryLocation;
+      status = "quote_sent";
+      createdAt = request.createdAt;
+      adminNotes = request.adminNotes;
+    };
+    quoteRequests.add(args.requestId, updatedRequest);
+  };
+
+  public shared func markAdvancePaidAdmin(email : Text, password : Text, requestId : Nat) : async () {
+    if (not isAdminCredentials(email, password)) {
+      Runtime.trap("Unauthorized: Invalid admin credentials");
+    };
+    let request = switch (quoteRequests.get(requestId)) {
+      case (null) { Runtime.trap("Quote request not found") };
+      case (?r) { r };
+    };
+    let updatedRequest : QuoteRequest = {
+      id = request.id;
+      customerId = request.customerId;
+      boxType = request.boxType;
+      length = request.length;
+      width = request.width;
+      height = request.height;
+      material = request.material;
+      quantity = request.quantity;
+      drawingFileId = request.drawingFileId;
+      deliveryLocation = request.deliveryLocation;
+      status = "advance_paid";
+      createdAt = request.createdAt;
+      adminNotes = request.adminNotes;
+    };
+    quoteRequests.add(requestId, updatedRequest);
+    let existingOrder = orders.get(requestId);
+    let order : Order = switch (existingOrder) {
+      case (null) {
+        {
+          requestId;
+          customerId = request.customerId;
+          advancePaid = true;
+          finalPaid = false;
+          manufacturingNotes = null;
+          deliveryTrackingInfo = null;
+        };
+      };
+      case (?o) {
+        {
+          requestId = o.requestId;
+          customerId = o.customerId;
+          advancePaid = true;
+          finalPaid = o.finalPaid;
+          manufacturingNotes = o.manufacturingNotes;
+          deliveryTrackingInfo = o.deliveryTrackingInfo;
+        };
+      };
+    };
+    orders.add(requestId, order);
+  };
+
+  public shared func updateOrderStatusAdmin(email : Text, password : Text, args : OrderUpdateArgs) : async () {
+    if (not isAdminCredentials(email, password)) {
+      Runtime.trap("Unauthorized: Invalid admin credentials");
+    };
+    let request = switch (quoteRequests.get(args.requestId)) {
+      case (null) { Runtime.trap("Quote request not found") };
+      case (?r) { r };
+    };
+    let status = if (args.deliveryTrackingInfo != null) {
+      "delivered";
+    } else if (args.manufacturingNotes != null) {
+      "in_production";
+    } else {
+      "completed";
+    };
+    let updatedRequest : QuoteRequest = {
+      id = request.id;
+      customerId = request.customerId;
+      boxType = request.boxType;
+      length = request.length;
+      width = request.width;
+      height = request.height;
+      material = request.material;
+      quantity = request.quantity;
+      drawingFileId = request.drawingFileId;
+      deliveryLocation = request.deliveryLocation;
+      status;
+      createdAt = request.createdAt;
+      adminNotes = request.adminNotes;
+    };
+    quoteRequests.add(args.requestId, updatedRequest);
+    let existingOrder = switch (orders.get(args.requestId)) {
+      case (null) {
+        {
+          requestId = args.requestId;
+          customerId = request.customerId;
+          advancePaid = false;
+          finalPaid = false;
+          manufacturingNotes = args.manufacturingNotes;
+          deliveryTrackingInfo = args.deliveryTrackingInfo;
+        };
+      };
+      case (?o) {
+        {
+          requestId = o.requestId;
+          customerId = o.customerId;
+          advancePaid = o.advancePaid;
+          finalPaid = o.finalPaid;
+          manufacturingNotes = args.manufacturingNotes;
+          deliveryTrackingInfo = args.deliveryTrackingInfo;
+        };
+      };
+    };
+    orders.add(args.requestId, existingOrder);
+  };
+
+  public query func getOrderAdmin(email : Text, password : Text, requestId : Nat) : async ?Order {
+    if (not isAdminCredentials(email, password)) {
+      Runtime.trap("Unauthorized: Invalid admin credentials");
+    };
+    orders.get(requestId);
+  };
+
+  public shared func updateRequestStatusAdmin(email : Text, password : Text, requestId : Nat, status : Text) : async () {
+    if (not isAdminCredentials(email, password)) {
+      Runtime.trap("Unauthorized: Invalid admin credentials");
+    };
+    let request = switch (quoteRequests.get(requestId)) {
+      case (null) { Runtime.trap("Quote request not found") };
+      case (?r) { r };
+    };
+    let updatedRequest : QuoteRequest = {
+      id = request.id;
+      customerId = request.customerId;
+      boxType = request.boxType;
+      length = request.length;
+      width = request.width;
+      height = request.height;
+      material = request.material;
+      quantity = request.quantity;
+      drawingFileId = request.drawingFileId;
+      deliveryLocation = request.deliveryLocation;
+      status;
+      createdAt = request.createdAt;
+      adminNotes = request.adminNotes;
+    };
+    quoteRequests.add(requestId, updatedRequest);
+  };
+
+  //-------------- Original principal-based APIs (kept for II admin) ----------------//
 
   public query ({ caller }) func getCallerUserProfile() : async ?CustomerProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -496,7 +727,6 @@ actor {
   //------------------- Email User Management -------------------//
 
   public shared ({ caller }) func registerEmailUser(args : RegisterEmailUserArgs) : async RegisterEmailUserResult {
-    // No authorization check - allow anonymous principals (guests) to register
     switch (emailUsers.get(args.email)) {
       case (null) {
         let profile : CustomerProfile = {
@@ -519,7 +749,6 @@ actor {
   };
 
   public shared ({ caller }) func loginEmailUser(args : LoginEmailUserArgs) : async LoginEmailUserResult {
-    // No authorization check - authentication is via email+password
     switch (emailUsers.get(args.email)) {
       case (null) { #errNotFound("Email not found") };
       case (?record) {
@@ -531,7 +760,6 @@ actor {
   };
 
   public shared ({ caller }) func updateEmailUserProfile(args : EmailProfileUpdateArgs) : async UpdateEmailUserProfileResult {
-    // No authorization check - authentication is via email+password
     switch (emailUsers.get(args.email)) {
       case (null) { #errNotFound("Email not found") };
       case (?record) {
@@ -548,7 +776,6 @@ actor {
   };
 
   public shared ({ caller }) func getEmailUserProfile(args : GetEmailUserProfileArgs) : async GetEmailUserProfileResult {
-    // No authorization check - authentication is via email+password
     switch (emailUsers.get(args.email)) {
       case (null) { #errNotFound("Email not found") };
       case (?record) {
@@ -558,6 +785,7 @@ actor {
       };
     };
   };
+
   // Email-authenticated quote request submission
   public shared func submitQuoteRequestWithEmail(email : Text, password : Text, args : QuoteRequestArgs) : async Nat {
     switch (emailUsers.get(email)) {

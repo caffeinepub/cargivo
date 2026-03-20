@@ -190,6 +190,11 @@ export const idlService = IDL.Service({
   'getInvoiceData' : IDL.Func([IDL.Nat], [IDL.Opt(InvoiceData)], ['query']),
   'getMyProfile' : IDL.Func([], [IDL.Opt(CustomerProfile)], ['query']),
   'getMyQuoteRequests' : IDL.Func([], [IDL.Vec(QuoteRequest)], ['query']),
+  'getMyQuoteRequestsWithEmail' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Vec(QuoteRequest)],
+      ['query'],
+    ),
   'getOrder' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
   'getQuotation' : IDL.Func([IDL.Nat], [IDL.Opt(Quotation)], ['query']),
   'getUserProfile' : IDL.Func(
@@ -210,6 +215,11 @@ export const idlService = IDL.Service({
   'saveCallerUserProfile' : IDL.Func([CustomerProfile], [], []),
   'sendQuotation' : IDL.Func([QuotationArgs], [], []),
   'submitQuoteRequest' : IDL.Func([QuoteRequestArgs], [IDL.Nat], []),
+  'submitQuoteRequestWithEmail' : IDL.Func(
+      [IDL.Text, IDL.Text, QuoteRequestArgs],
+      [IDL.Nat],
+      [],
+    ),
   'updateEmailUserProfile' : IDL.Func(
       [EmailProfileUpdateArgs],
       [UpdateEmailUserProfileResult],
@@ -407,6 +417,11 @@ export const idlFactory = ({ IDL }) => {
     'getInvoiceData' : IDL.Func([IDL.Nat], [IDL.Opt(InvoiceData)], ['query']),
     'getMyProfile' : IDL.Func([], [IDL.Opt(CustomerProfile)], ['query']),
     'getMyQuoteRequests' : IDL.Func([], [IDL.Vec(QuoteRequest)], ['query']),
+    'getMyQuoteRequestsWithEmail' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Vec(QuoteRequest)],
+        ['query'],
+      ),
     'getOrder' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
     'getQuotation' : IDL.Func([IDL.Nat], [IDL.Opt(Quotation)], ['query']),
     'getUserProfile' : IDL.Func(
@@ -431,6 +446,11 @@ export const idlFactory = ({ IDL }) => {
     'saveCallerUserProfile' : IDL.Func([CustomerProfile], [], []),
     'sendQuotation' : IDL.Func([QuotationArgs], [], []),
     'submitQuoteRequest' : IDL.Func([QuoteRequestArgs], [IDL.Nat], []),
+    'submitQuoteRequestWithEmail' : IDL.Func(
+        [IDL.Text, IDL.Text, QuoteRequestArgs],
+        [IDL.Nat],
+        [],
+      ),
     'updateEmailUserProfile' : IDL.Func(
         [EmailProfileUpdateArgs],
         [UpdateEmailUserProfileResult],

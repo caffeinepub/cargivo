@@ -1,10 +1,12 @@
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useEmailAuth } from "@/hooks/useEmailAuth";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useGetMyProfile, useIsCallerAdmin } from "@/hooks/useQueries";
 import { AdminDashboard } from "@/pages/AdminDashboard";
+import { AdminLoginPage } from "@/pages/AdminLoginPage";
 import { CustomerDashboard } from "@/pages/CustomerDashboard";
 import { InvoicePage } from "@/pages/InvoicePage";
 import { LandingPage } from "@/pages/LandingPage";
@@ -44,6 +46,7 @@ export default function App() {
   const { path, navigate } = useRouter();
   const { identity, login, isInitializing } = useInternetIdentity();
   const { emailUser, isEmailAuthenticated, emailLogout } = useEmailAuth();
+  const { isAdminAuthenticated } = useAdminAuth();
 
   const isAuthenticated = !!identity || isEmailAuthenticated;
 
@@ -104,9 +107,24 @@ export default function App() {
     );
   }
 
+  if (path === "/admin-login") {
+    // If already admin, redirect to admin dashboard
+    if (isAdminAuthenticated) {
+      navigate("/admin");
+      return null;
+    }
+    return (
+      <>
+        <AdminLoginPage onNavigate={navigate} />
+        <Toaster richColors />
+      </>
+    );
+  }
+
   if (path === "/admin") {
-    if (!identity) {
-      navigate("/");
+    // Allow admin email auth OR Internet Identity admin
+    if (!isAdminAuthenticated && !identity) {
+      navigate("/admin-login");
       return null;
     }
     return (

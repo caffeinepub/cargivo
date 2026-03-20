@@ -8,11 +8,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useEmailAuth } from "@/hooks/useEmailAuth";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
+
+const ADMIN_EMAIL = "admin@cargivo.com";
+const ADMIN_PASSWORD = "Cargivo@2024";
 
 interface LoginPageProps {
   onNavigate: (path: string) => void;
@@ -37,7 +41,10 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
   const [regForm, setRegForm] = useState(emptyRegForm);
   const [regError, setRegError] = useState("");
   const [regLoading, setRegLoading] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const { emailLogin, emailRegister } = useEmailAuth();
+  const { adminLogin } = useAdminAuth();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -56,6 +63,15 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
     setLoginLoading(true);
     setLoginError("");
     try {
+      // Check admin credentials first
+      if (form.email === ADMIN_EMAIL && form.password === ADMIN_PASSWORD) {
+        adminLogin(form.email, form.password);
+        toast.success("Admin login successful!");
+        setForm(emptyLoginForm);
+        onNavigate("/admin");
+        return;
+      }
+
       const result = await emailLogin(form.email, form.password);
       if (result.__kind__ === "ok") {
         toast.success("Logged in successfully! Welcome back.");
@@ -88,7 +104,6 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
         contactName: regForm.contactName,
       });
       if (result.__kind__ === "ok") {
-        // Auto-login after successful registration
         const loginResult = await emailLogin(regForm.email, regForm.password);
         setShowRegister(false);
         setRegForm(emptyRegForm);
@@ -113,13 +128,11 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
-      {/* Background accents */}
       <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-background to-blue-600/10" />
       <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-orange-400/15 blur-3xl" />
       <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-blue-500/10 blur-3xl" />
       <div className="absolute inset-0 grid-noise opacity-30" />
 
-      {/* Back to Home */}
       <button
         type="button"
         onClick={() => onNavigate("/")}
@@ -183,16 +196,31 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="reg-password">Password</Label>
-              <Input
-                id="reg-password"
-                name="password"
-                type="password"
-                placeholder="Create a strong password"
-                value={regForm.password}
-                onChange={handleRegChange}
-                required
-                data-ocid="register.input"
-              />
+              <div className="relative">
+                <Input
+                  id="reg-password"
+                  name="password"
+                  type={showRegPassword ? "text" : "password"}
+                  placeholder="Create a strong password"
+                  value={regForm.password}
+                  onChange={handleRegChange}
+                  required
+                  className="pr-10"
+                  data-ocid="register.input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRegPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showRegPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -278,9 +306,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
         transition={{ duration: 0.5 }}
         className="relative w-full max-w-md mx-4"
       >
-        {/* Card */}
         <div className="bg-card border border-border rounded-2xl p-8 shadow-2xl">
-          {/* Logo */}
           <div className="flex justify-center mb-6">
             <button
               type="button"
@@ -320,16 +346,31 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Enter your password"
-                value={form.password}
-                onChange={handleChange}
-                required
-                data-ocid="login.input"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showLoginPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={form.password}
+                  onChange={handleChange}
+                  required
+                  className="pr-10"
+                  data-ocid="login.input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showLoginPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
             {loginError && (
               <p className="text-sm text-red-500" data-ocid="login.error_state">
