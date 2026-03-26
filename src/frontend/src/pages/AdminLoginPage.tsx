@@ -8,13 +8,18 @@ import { toast } from "sonner";
 
 interface Props {
   navigate: NavigateFn;
+  isActorReady: boolean;
   adminLogin: (
     email: string,
     password: string,
   ) => Promise<{ success: boolean; error?: string }>;
 }
 
-export default function AdminLoginPage({ navigate, adminLogin }: Props) {
+export default function AdminLoginPage({
+  navigate,
+  isActorReady,
+  adminLogin,
+}: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,6 +37,8 @@ export default function AdminLoginPage({ navigate, adminLogin }: Props) {
       toast.error(result.error ?? "Invalid credentials");
     }
   };
+
+  const isSubmitDisabled = isLoading || !isActorReady;
 
   return (
     <div className="min-h-screen bg-secondary/40 flex flex-col">
@@ -65,6 +72,9 @@ export default function AdminLoginPage({ navigate, adminLogin }: Props) {
             <div className="mb-6 p-3 bg-accent rounded-xl">
               <p className="text-xs text-muted-foreground text-center">
                 Default: admin@cargivo.com / Cargivo@2024
+              </p>
+              <p className="text-xs text-muted-foreground text-center mt-1">
+                Also: lovepreet_singh@cargivo.shop / Cargivo@2024
               </p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -109,7 +119,7 @@ export default function AdminLoginPage({ navigate, adminLogin }: Props) {
               <Button
                 type="submit"
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-                disabled={isLoading}
+                disabled={isSubmitDisabled}
                 data-ocid="admin_login.submit_button"
               >
                 {isLoading ? (
@@ -117,10 +127,23 @@ export default function AdminLoginPage({ navigate, adminLogin }: Props) {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logging
                     in...
                   </>
+                ) : !isActorReady ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                    Connecting...
+                  </>
                 ) : (
                   "Login to Admin"
                 )}
               </Button>
+              {!isActorReady && (
+                <p
+                  className="text-center text-xs text-muted-foreground"
+                  data-ocid="admin_login.loading_state"
+                >
+                  Connecting to server, please wait…
+                </p>
+              )}
             </form>
           </div>
         </div>

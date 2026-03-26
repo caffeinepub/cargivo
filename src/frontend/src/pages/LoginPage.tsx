@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 interface Props {
   navigate: NavigateFn;
+  isActorReady: boolean;
   emailLogin: (
     email: string,
     password: string,
@@ -30,6 +31,7 @@ interface Props {
 
 export default function LoginPage({
   navigate,
+  isActorReady,
   emailLogin,
   adminLogin,
   emailSignup,
@@ -40,14 +42,12 @@ export default function LoginPage({
   const [isLoading, setIsLoading] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showSignupPw, setShowSignupPw] = useState(false);
-  const [showSignupConfirm, setShowSignupConfirm] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [signupForm, setSignupForm] = useState({
     companyName: "",
     gstNumber: "",
     email: "",
     password: "",
-    confirmPassword: "",
     pincode: "",
     state: "",
     city: "",
@@ -57,13 +57,13 @@ export default function LoginPage({
     contactName: "",
   });
 
-  const ADMIN_EMAIL = "admin@cargivo.com";
+  const ADMIN_EMAILS = ["admin@cargivo.com", "lovepreet_singh@cargivo.shop"];
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      if (email.toLowerCase() === ADMIN_EMAIL) {
+      if (ADMIN_EMAILS.includes(email.toLowerCase())) {
         const result = await adminLogin(email, password);
         if (result.success) {
           toast.success("Welcome, Admin!");
@@ -87,10 +87,6 @@ export default function LoginPage({
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (signupForm.password !== signupForm.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
     setIsSigningUp(true);
     const address = `${signupForm.building}, ${signupForm.landmark}, ${signupForm.city}, ${signupForm.state} - ${signupForm.pincode}`;
     const result = await emailSignup({
@@ -111,6 +107,8 @@ export default function LoginPage({
       toast.error(result.error ?? "Signup failed");
     }
   };
+
+  const isSubmitDisabled = isLoading || !isActorReady;
 
   return (
     <div className="min-h-screen bg-secondary/40 flex flex-col">
@@ -185,7 +183,7 @@ export default function LoginPage({
               <Button
                 type="submit"
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-                disabled={isLoading}
+                disabled={isSubmitDisabled}
                 data-ocid="login.submit_button"
               >
                 {isLoading ? (
@@ -193,10 +191,23 @@ export default function LoginPage({
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logging
                     in...
                   </>
+                ) : !isActorReady ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                    Connecting...
+                  </>
                 ) : (
                   "Login"
                 )}
               </Button>
+              {!isActorReady && (
+                <p
+                  className="text-center text-xs text-muted-foreground"
+                  data-ocid="login.loading_state"
+                >
+                  Connecting to server, please wait…
+                </p>
+              )}
             </form>
             <p className="text-center text-sm text-muted-foreground mt-6">
               Don't have an account?{" "}
@@ -279,7 +290,7 @@ export default function LoginPage({
                   data-ocid="signup.input"
                 />
               </div>
-              <div>
+              <div className="col-span-2">
                 <Label htmlFor="ls-password">Password *</Label>
                 <div className="relative">
                   <Input
@@ -299,36 +310,6 @@ export default function LoginPage({
                     onClick={() => setShowSignupPw((p) => !p)}
                   >
                     {showSignupPw ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="ls-confirm">Confirm Password *</Label>
-                <div className="relative">
-                  <Input
-                    id="ls-confirm"
-                    type={showSignupConfirm ? "text" : "password"}
-                    required
-                    value={signupForm.confirmPassword}
-                    onChange={(e) =>
-                      setSignupForm((f) => ({
-                        ...f,
-                        confirmPassword: e.target.value,
-                      }))
-                    }
-                    placeholder="••••••••"
-                    data-ocid="signup.input"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    onClick={() => setShowSignupConfirm((p) => !p)}
-                  >
-                    {showSignupConfirm ? (
                       <EyeOff className="h-4 w-4" />
                     ) : (
                       <Eye className="h-4 w-4" />
@@ -441,7 +422,7 @@ export default function LoginPage({
             <Button
               type="submit"
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
-              disabled={isSigningUp}
+              disabled={isSigningUp || !isActorReady}
               data-ocid="signup.submit_button"
             >
               {isSigningUp ? "Creating Account..." : "Create Account"}

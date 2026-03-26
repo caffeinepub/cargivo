@@ -24,7 +24,7 @@ export function useEmailAuth() {
   const [authData, setAuthData] = useState<EmailAuthData | null>(
     loadFromStorage,
   );
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
 
   const emailLogin = useCallback(
     async (email: string, password: string) => {
@@ -86,6 +86,7 @@ export function useEmailAuth() {
       ? { email: authData.email, password: authData.password }
       : null,
     isEmailAuthenticated: authData !== null,
+    isActorReady: actor !== null && !isFetching,
     emailLogin,
     emailLogout,
     emailSignup,

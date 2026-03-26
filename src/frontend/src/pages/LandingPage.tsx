@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   CheckCircle,
   ChevronRight,
@@ -16,6 +17,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  MessageSquarePlus,
   Package,
   Quote,
   ShieldCheck,
@@ -34,6 +36,26 @@ interface Props {
   ) => Promise<{ success: boolean; error?: string }>;
 }
 
+interface UserReview {
+  id: string;
+  name: string;
+  company: string;
+  city: string;
+  comment: string;
+  rating: number;
+}
+
+const REVIEWS_KEY = "cargivo_reviews";
+
+function loadReviews(): UserReview[] {
+  try {
+    const raw = localStorage.getItem(REVIEWS_KEY);
+    return raw ? (JSON.parse(raw) as UserReview[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 function LogoImage({ className }: { className?: string }) {
   const [useFallback, setUseFallback] = useState(false);
 
@@ -49,7 +71,7 @@ function LogoImage({ className }: { className?: string }) {
 
   return (
     <img
-      src="/assets/generated/cargivo-logo-transparent.dim_200x60.png"
+      src="/assets/uploads/cargivo_logo_with_motion_trails-019d2b28-4cc6-7378-aae8-b18db2273b4e-1.png"
       alt="Cargivo"
       className={className}
       onError={() => setUseFallback(true)}
@@ -64,14 +86,12 @@ export default function LandingPage({
 }: Props) {
   const [showSignup, setShowSignup] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     companyName: "",
     gstNumber: "",
     email: "",
     password: "",
-    confirmPassword: "",
     pincode: "",
     state: "",
     city: "",
@@ -81,12 +101,36 @@ export default function LandingPage({
     contactName: "",
   });
 
+  // Review modal state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [userReviews, setUserReviews] = useState<UserReview[]>(loadReviews);
+  const [reviewForm, setReviewForm] = useState({
+    name: "",
+    company: "",
+    city: "",
+    comment: "",
+    rating: 5,
+  });
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  const handleReviewSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingReview(true);
+    const newReview: UserReview = {
+      ...reviewForm,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    };
+    const updated = [...userReviews, newReview];
+    localStorage.setItem(REVIEWS_KEY, JSON.stringify(updated));
+    setUserReviews(updated);
+    setReviewForm({ name: "", company: "", city: "", comment: "", rating: 5 });
+    setIsSubmittingReview(false);
+    setShowReviewModal(false);
+    toast.success("Thank you for your review!");
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.password !== form.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
     setIsSubmitting(true);
     const address = `${form.building}, ${form.landmark}, ${form.city}, ${form.state} - ${form.pincode}`;
     const result = await emailSignup({
@@ -176,15 +220,32 @@ export default function LandingPage({
       >
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
-            <Star className="h-3.5 w-3.5" /> Quotes in under 20 minutes
+            <Star className="h-3.5 w-3.5" /> Simple, Fast &amp; Reliable Way to
+            Get Cargo Boxes
           </div>
-          <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 leading-tight">
-            Fast Custom Box Quotes
+          <h1 className="text-5xl md:text-7xl font-display font-bold mb-4 leading-tight">
+            Custom Cargo Boxes. Quotes in Minutes.
           </h1>
-          <p className="text-xl md:text-2xl text-white/85 mb-10 max-w-2xl mx-auto">
-            Connect with verified fabricators for Metal, Wooden, Plastic &
-            Custom cargo boxes. Get competitive quotes fast.
-          </p>
+          <div className="inline-flex items-center gap-2 bg-orange-500/90 rounded-full px-5 py-2 text-sm font-semibold mb-8 shadow-md">
+            <Clock className="h-4 w-4" /> Get Best Price in 20 mins
+          </div>
+          {/* Step flow subtext */}
+          <div className="flex items-center justify-center flex-wrap gap-2 mb-10 text-white/90 text-base md:text-lg">
+            <span className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
+              <Package className="h-4 w-4 text-orange-300" />
+              Submit requirement
+            </span>
+            <ChevronRight className="h-5 w-5 text-orange-300" />
+            <span className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
+              <Clock className="h-4 w-4 text-orange-300" />
+              Get quotes in 10–20 min
+            </span>
+            <ChevronRight className="h-5 w-5 text-orange-300" />
+            <span className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
+              <Truck className="h-4 w-4 text-orange-300" />
+              Fast delivery
+            </span>
+          </div>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button
               size="lg"
@@ -194,47 +255,44 @@ export default function LandingPage({
             >
               Request a Quote <ChevronRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white text-white hover:bg-white/10 font-semibold text-lg px-8 py-6 rounded-full"
-              onClick={() => setShowSignup(true)}
-              data-ocid="hero.secondary_button"
-            >
-              Get Started
-            </Button>
           </div>
         </div>
       </section>
 
       {/* Stats bar */}
       <section className="bg-white border-b border-border py-8">
-        <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-5 gap-8 text-center">
           <div>
-            <p className="text-3xl font-bold text-primary font-display">500+</p>
+            <p className="text-3xl font-bold text-orange-500 font-display">
+              150+
+            </p>
             <p className="text-sm text-muted-foreground mt-1">
               Active Suppliers
             </p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-primary font-display">
-              &lt;20 min
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Average Quote Time
-            </p>
-          </div>
-          <div>
-            <p className="text-3xl font-bold text-primary font-display">
-              10,000+
+            <p className="text-3xl font-bold text-green-500 font-display">
+              500
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               Orders Fulfilled
             </p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-primary font-display">50+</p>
+            <p className="text-3xl font-bold text-blue-500 font-display">20+</p>
             <p className="text-sm text-muted-foreground mt-1">Cities Served</p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-purple-500 font-display">
+              95%
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              On Time Delivery
+            </p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-teal-500 font-display">₹0</p>
+            <p className="text-sm text-muted-foreground mt-1">Platform Fees</p>
           </div>
         </div>
       </section>
@@ -246,7 +304,7 @@ export default function LandingPage({
             Why Choose Cargivo?
           </h2>
           <p className="text-muted-foreground text-center mb-12 text-lg">
-            India's most trusted platform for custom cargo box fabrication
+            Built for businesses that need reliable, fast packaging solutions.
           </p>
           <div className="grid md:grid-cols-3 gap-8">
             {[
@@ -372,6 +430,7 @@ export default function LandingPage({
               { label: "Machinery", emoji: "⚙️" },
               { label: "Agriculture", emoji: "🌾" },
               { label: "Retail", emoji: "🛍️" },
+              { label: "Logistics / Warehousing", emoji: "🚚" },
             ].map(({ label, emoji }) => (
               <div
                 key={label}
@@ -398,14 +457,8 @@ export default function LandingPage({
           <p className="text-muted-foreground text-center mb-12 text-lg">
             Custom dimensions for every industry need
           </p>
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-3 gap-6">
             {[
-              {
-                label: "Metal Boxes",
-                color: "from-slate-500 to-slate-700",
-                emoji: "🏗️",
-                desc: "Heavy-duty industrial grade",
-              },
               {
                 label: "Wooden Boxes",
                 color: "from-amber-600 to-amber-800",
@@ -450,9 +503,16 @@ export default function LandingPage({
           <h2 className="text-4xl font-display font-bold text-center mb-4">
             How Pricing Works
           </h2>
-          <p className="text-muted-foreground text-center mb-12 text-lg">
+          <p className="text-muted-foreground text-center mb-6 text-lg">
             Simple, transparent, GST-compliant process
           </p>
+          {/* No hidden charges badge */}
+          <div className="flex justify-center mb-10">
+            <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-full px-6 py-2.5 text-sm font-semibold shadow-xs">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              No hidden charges
+            </div>
+          </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
@@ -518,29 +578,29 @@ export default function LandingPage({
             {[
               {
                 quote:
-                  "Got a quote in 15 minutes. Best service for bulk metal boxes. The quality exceeded our expectations and delivery was on time.",
-                name: "Rajesh Kumar",
-                company: "Kumar Industries",
+                  "Got a quote in 15 minutes. Best service for bulk wooden boxes. The quality exceeded our expectations and delivery was on time.",
+                name: "Su***** Me**a",
+                company: "Me**a Pa***ng Co.",
                 city: "Mumbai",
                 rating: 5,
               },
               {
                 quote:
                   "Quality wooden boxes delivered on time. Will order again. The auto-saved address feature saved us so much time on repeat orders.",
-                name: "Priya Shah",
-                company: "Shah Exports Pvt Ltd",
+                name: "Pr**a Sh**",
+                company: "Sh** Ex***ts Pvt Ltd",
                 city: "Ahmedabad",
                 rating: 5,
               },
               {
                 quote:
                   "Custom plastic boxes exactly as specified. Great supplier network. Our pharmaceutical packaging requirements were met perfectly.",
-                name: "Amit Patel",
-                company: "Patel Pharma Logistics",
+                name: "Am** Pa**l",
+                company: "Pa**l Ph***a Lo***ics",
                 city: "Pune",
                 rating: 5,
               },
-            ].map(({ quote, name, company, city }) => (
+            ].map(({ quote, name, company, city, rating }) => (
               <div
                 key={name}
                 className="bg-white rounded-2xl p-6 shadow-xs border border-border flex flex-col gap-4"
@@ -549,22 +609,81 @@ export default function LandingPage({
                   {[1, 2, 3, 4, 5].map((i) => (
                     <Star
                       key={i}
-                      className="h-4 w-4 fill-amber-400 text-amber-400"
+                      className={`h-4 w-4 ${
+                        i <= rating
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-muted-foreground"
+                      }`}
                     />
                   ))}
                 </div>
                 <Quote className="h-6 w-6 text-primary/30" />
                 <p className="text-foreground/80 text-sm leading-relaxed flex-1 italic">
-                  "{quote}"
+                  &ldquo;{quote}&rdquo;
                 </p>
                 <div className="border-t border-border pt-4">
                   <p className="font-semibold text-sm">{name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {company} · {city}
+                    <span className="font-bold text-foreground/70">
+                      {company}
+                    </span>{" "}
+                    · {city}
                   </p>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* User-submitted reviews */}
+          {userReviews.length > 0 && (
+            <div className="grid md:grid-cols-3 gap-8 mt-8">
+              {userReviews.map((review, idx) => (
+                <div
+                  key={review.id}
+                  className="bg-white rounded-2xl p-6 shadow-xs border border-orange-200 flex flex-col gap-4"
+                  data-ocid={`testimonials.item.${idx + 1}`}
+                >
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i <= review.rating
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <Quote className="h-6 w-6 text-orange-300" />
+                  <p className="text-foreground/80 text-sm leading-relaxed flex-1 italic">
+                    &ldquo;{review.comment}&rdquo;
+                  </p>
+                  <div className="border-t border-border pt-4">
+                    <p className="font-semibold text-sm">{review.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-bold text-foreground/70">
+                        {review.company}
+                      </span>{" "}
+                      · {review.city}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Your Review button */}
+          <div className="flex justify-center mt-10">
+            <Button
+              size="lg"
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 rounded-full gap-2"
+              onClick={() => setShowReviewModal(true)}
+              data-ocid="testimonials.open_modal_button"
+            >
+              <MessageSquarePlus className="h-5 w-5" />
+              Add Your Review
+            </Button>
           </div>
         </div>
       </section>
@@ -588,8 +707,7 @@ export default function LandingPage({
           </Button>
           <Button
             size="lg"
-            variant="outline"
-            className="border-white text-white hover:bg-white/10 px-8 rounded-full"
+            className="border-2 border-white text-white bg-transparent hover:bg-white/20 px-8 rounded-full"
             onClick={() => navigate("/login")}
             data-ocid="cta.login.button"
           >
@@ -723,7 +841,7 @@ export default function LandingPage({
                   data-ocid="signup.input"
                 />
               </div>
-              <div>
+              <div className="col-span-2">
                 <Label htmlFor="s-password">Password *</Label>
                 <div className="relative">
                   <Input
@@ -743,36 +861,6 @@ export default function LandingPage({
                     onClick={() => setShowPassword((p) => !p)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="s-confirm">Confirm Password *</Label>
-                <div className="relative">
-                  <Input
-                    id="s-confirm"
-                    type={showConfirm ? "text" : "password"}
-                    required
-                    value={form.confirmPassword}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        confirmPassword: e.target.value,
-                      }))
-                    }
-                    placeholder="••••••••"
-                    data-ocid="signup.input"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    onClick={() => setShowConfirm((p) => !p)}
-                  >
-                    {showConfirm ? (
                       <EyeOff className="h-4 w-4" />
                     ) : (
                       <Eye className="h-4 w-4" />
@@ -902,6 +990,119 @@ export default function LandingPage({
                 Login
               </button>
             </p>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Review Modal */}
+      <Dialog open={showReviewModal} onOpenChange={setShowReviewModal}>
+        <DialogContent className="max-w-md" data-ocid="testimonials.dialog">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-display font-bold">
+              Add Your Review
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleReviewSubmit} className="space-y-4 mt-2">
+            <div>
+              <Label htmlFor="r-name">Your Name *</Label>
+              <Input
+                id="r-name"
+                required
+                value={reviewForm.name}
+                onChange={(e) =>
+                  setReviewForm((f) => ({ ...f, name: e.target.value }))
+                }
+                placeholder="Rahul Sharma"
+                data-ocid="testimonials.input"
+              />
+            </div>
+            <div>
+              <Label htmlFor="r-company">Company Name *</Label>
+              <Input
+                id="r-company"
+                required
+                value={reviewForm.company}
+                onChange={(e) =>
+                  setReviewForm((f) => ({ ...f, company: e.target.value }))
+                }
+                placeholder="ABC Industries"
+                data-ocid="testimonials.input"
+              />
+            </div>
+            <div>
+              <Label htmlFor="r-city">City *</Label>
+              <Input
+                id="r-city"
+                required
+                value={reviewForm.city}
+                onChange={(e) =>
+                  setReviewForm((f) => ({ ...f, city: e.target.value }))
+                }
+                placeholder="Mumbai"
+                data-ocid="testimonials.input"
+              />
+            </div>
+            <div>
+              <Label>Star Rating *</Label>
+              <div className="flex gap-1 mt-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() =>
+                      setReviewForm((f) => ({ ...f, rating: star }))
+                    }
+                    className="focus:outline-none"
+                    aria-label={`Rate ${star} stars`}
+                  >
+                    <Star
+                      className={`h-7 w-7 transition-colors ${
+                        star <= reviewForm.rating
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-muted-foreground hover:text-amber-300"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="r-comment">Review / Comment *</Label>
+              <Textarea
+                id="r-comment"
+                required
+                maxLength={200}
+                rows={4}
+                value={reviewForm.comment}
+                onChange={(e) =>
+                  setReviewForm((f) => ({ ...f, comment: e.target.value }))
+                }
+                placeholder="Tell us about your experience with Cargivo..."
+                data-ocid="testimonials.textarea"
+              />
+              <p className="text-xs text-muted-foreground mt-1 text-right">
+                {reviewForm.comment.length}/200
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowReviewModal(false)}
+                data-ocid="testimonials.cancel_button"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+                disabled={isSubmittingReview}
+                data-ocid="testimonials.submit_button"
+              >
+                {isSubmittingReview ? "Submitting..." : "Submit Review"}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

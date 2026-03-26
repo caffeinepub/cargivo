@@ -26,6 +26,7 @@ export default function App() {
 
   const {
     isEmailAuthenticated,
+    isActorReady,
     emailLogin,
     emailLogout,
     emailSignup,
@@ -34,6 +35,7 @@ export default function App() {
   } = useEmailAuth();
   const {
     isAdminAuthenticated,
+    isActorReady: isAdminActorReady,
     adminLogin,
     adminLogout,
     adminEmail,
@@ -45,6 +47,7 @@ export default function App() {
     return (
       <LoginPage
         navigate={navigate}
+        isActorReady={isActorReady}
         emailLogin={emailLogin}
         adminLogin={adminLogin}
         emailSignup={emailSignup}
@@ -52,7 +55,13 @@ export default function App() {
     );
   }
   if (path === "/admin" && !isAdminAuthenticated) {
-    return <AdminLoginPage navigate={navigate} adminLogin={adminLogin} />;
+    return (
+      <AdminLoginPage
+        navigate={navigate}
+        isActorReady={isAdminActorReady}
+        adminLogin={adminLogin}
+      />
+    );
   }
 
   switch (path) {
@@ -61,6 +70,7 @@ export default function App() {
         <>
           <LoginPage
             navigate={navigate}
+            isActorReady={isActorReady}
             emailLogin={emailLogin}
             adminLogin={adminLogin}
             emailSignup={emailSignup}
@@ -71,7 +81,11 @@ export default function App() {
     case "/admin-login":
       return (
         <>
-          <AdminLoginPage navigate={navigate} adminLogin={adminLogin} />
+          <AdminLoginPage
+            navigate={navigate}
+            isActorReady={isAdminActorReady}
+            adminLogin={adminLogin}
+          />
           <Toaster />
         </>
       );

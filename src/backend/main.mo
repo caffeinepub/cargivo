@@ -20,6 +20,10 @@ actor {
   stable var adminEmail : Text = "admin@cargivo.com";
   stable var adminPassword : Text = "Cargivo@2024";
 
+  // Second admin
+  stable var admin2Email : Text = "lovepreet_singh@cargivo.shop";
+  stable var admin2Password : Text = "Cargivo@2024";
+
   type CustomerProfile = {
     companyName : Text;
     gstNumber : Text;
@@ -224,7 +228,8 @@ actor {
   //-------------- Admin Email Auth Helpers ----------------//
 
   func isAdminCredentials(email : Text, password : Text) : Bool {
-    email == adminEmail and password == adminPassword;
+    (email == adminEmail and password == adminPassword) or
+    (email == admin2Email and password == admin2Password);
   };
 
   public shared func verifyAdminLogin(email : Text, password : Text) : async AdminLoginResult {

@@ -22,7 +22,7 @@ export function useAdminAuth() {
   const [authData, setAuthData] = useState<AdminAuthData | null>(
     loadFromStorage,
   );
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
 
   const adminLogin = useCallback(
     async (email: string, password: string) => {
@@ -46,6 +46,7 @@ export function useAdminAuth() {
 
   return {
     isAdminAuthenticated: authData !== null,
+    isActorReady: actor !== null && !isFetching,
     adminLogin,
     adminLogout,
     adminEmail: authData?.email ?? "",
