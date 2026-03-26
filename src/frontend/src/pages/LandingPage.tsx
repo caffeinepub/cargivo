@@ -10,17 +10,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  CheckCircle,
   ChevronRight,
   Clock,
   Eye,
   EyeOff,
+  FileText,
   Package,
+  Quote,
+  ShieldCheck,
   Star,
   Truck,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import cargivoLogo from "/assets/uploads/image-4-1.png";
 
 interface Props {
   navigate: NavigateFn;
@@ -28,6 +32,29 @@ interface Props {
   emailSignup: (
     args: RegisterEmailUserArgs,
   ) => Promise<{ success: boolean; error?: string }>;
+}
+
+function LogoImage({ className }: { className?: string }) {
+  const [useFallback, setUseFallback] = useState(false);
+
+  if (useFallback) {
+    return (
+      <span
+        className={`font-bold text-primary text-2xl tracking-wide ${className ?? ""}`}
+      >
+        CARGIVO
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src="/assets/generated/cargivo-logo-transparent.dim_200x60.png"
+      alt="Cargivo"
+      className={className}
+      onError={() => setUseFallback(true)}
+    />
+  );
 }
 
 export default function LandingPage({
@@ -96,7 +123,7 @@ export default function LandingPage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-8">
-              <img src={cargivoLogo} alt="Cargivo" className="h-14 w-auto" />
+              <LogoImage className="h-14 w-auto" />
               <nav className="hidden md:flex items-center gap-6">
                 <a
                   href="#how-it-works"
@@ -111,6 +138,13 @@ export default function LandingPage({
                   data-ocid="nav.link"
                 >
                   Box Types
+                </a>
+                <a
+                  href="#industries"
+                  className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors"
+                  data-ocid="nav.link"
+                >
+                  Industries
                 </a>
               </nav>
             </div>
@@ -151,20 +185,31 @@ export default function LandingPage({
             Connect with verified fabricators for Metal, Wooden, Plastic &
             Custom cargo boxes. Get competitive quotes fast.
           </p>
-          <Button
-            size="lg"
-            className="bg-white text-primary hover:bg-white/90 font-semibold text-lg px-8 py-6 rounded-full shadow-lg"
-            onClick={handleRequestQuote}
-            data-ocid="hero.primary_button"
-          >
-            Request a Quote <ChevronRight className="ml-2 h-5 w-5" />
-          </Button>
+          <div className="flex gap-4 justify-center flex-wrap">
+            <Button
+              size="lg"
+              className="bg-white text-primary hover:bg-white/90 font-semibold text-lg px-8 py-6 rounded-full shadow-lg"
+              onClick={handleRequestQuote}
+              data-ocid="hero.primary_button"
+            >
+              Request a Quote <ChevronRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-white text-white hover:bg-white/10 font-semibold text-lg px-8 py-6 rounded-full"
+              onClick={() => setShowSignup(true)}
+              data-ocid="hero.secondary_button"
+            >
+              Get Started Free
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* Stats bar */}
       <section className="bg-white border-b border-border py-8">
-        <div className="max-w-5xl mx-auto px-4 grid grid-cols-3 gap-8 text-center">
+        <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div>
             <p className="text-3xl font-bold text-primary font-display">500+</p>
             <p className="text-sm text-muted-foreground mt-1">
@@ -186,6 +231,64 @@ export default function LandingPage({
             <p className="text-sm text-muted-foreground mt-1">
               Orders Fulfilled
             </p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-primary font-display">50+</p>
+            <p className="text-sm text-muted-foreground mt-1">Cities Served</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Cargivo */}
+      <section className="py-20 px-4 bg-white" data-ocid="why_cargivo.section">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-display font-bold text-center mb-4">
+            Why Choose Cargivo?
+          </h2>
+          <p className="text-muted-foreground text-center mb-12 text-lg">
+            India's most trusted platform for custom cargo box fabrication
+          </p>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: ShieldCheck,
+                title: "Verified Suppliers",
+                desc: "Only verified, GST-registered fabricators on our platform. Every supplier is vetted for quality and reliability.",
+                color: "bg-green-50",
+                iconColor: "text-green-600",
+              },
+              {
+                icon: FileText,
+                title: "Transparent Pricing",
+                desc: "No hidden costs. Get itemized quotes with base price, GST breakdown, and delivery charges upfront.",
+                color: "bg-blue-50",
+                iconColor: "text-blue-600",
+              },
+              {
+                icon: Zap,
+                title: "Fast Turnaround",
+                desc: "Production starts within 24 hours of advance payment. Most orders delivered within 7–10 working days.",
+                color: "bg-orange-50",
+                iconColor: "text-primary",
+              },
+            ].map(({ icon: Icon, title, desc, color, iconColor }) => (
+              <div
+                key={title}
+                className="rounded-2xl p-8 border border-border shadow-xs hover:shadow-md transition-all hover:-translate-y-1 text-center"
+              >
+                <div
+                  className={`w-16 h-16 ${color} rounded-2xl flex items-center justify-center mx-auto mb-5`}
+                >
+                  <Icon className={`h-8 w-8 ${iconColor}`} />
+                </div>
+                <h3 className="text-xl font-display font-semibold mb-3">
+                  {title}
+                </h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {desc}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -246,10 +349,46 @@ export default function LandingPage({
         </div>
       </section>
 
+      {/* Industries We Serve */}
+      <section
+        id="industries"
+        className="py-20 px-4 bg-white"
+        data-ocid="industries.section"
+      >
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-display font-bold text-center mb-4">
+            Industries We Serve
+          </h2>
+          <p className="text-muted-foreground text-center mb-10 text-lg">
+            Trusted by businesses across every major sector
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            {[
+              { label: "Automotive", emoji: "🚗" },
+              { label: "Pharmaceuticals", emoji: "💊" },
+              { label: "Electronics", emoji: "💻" },
+              { label: "Food & Beverage", emoji: "🍱" },
+              { label: "Textile", emoji: "🧵" },
+              { label: "Machinery", emoji: "⚙️" },
+              { label: "Agriculture", emoji: "🌾" },
+              { label: "Retail", emoji: "🛍️" },
+            ].map(({ label, emoji }) => (
+              <div
+                key={label}
+                className="flex items-center gap-2 bg-secondary/60 border border-border rounded-full px-5 py-2.5 font-medium text-sm hover:bg-accent hover:border-primary hover:text-primary transition-all cursor-default"
+              >
+                <span className="text-lg">{emoji}</span>
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Box Types */}
       <section
         id="box-types"
-        className="py-20 px-4 bg-white"
+        className="py-20 px-4 bg-secondary/40"
         data-ocid="box_types.section"
       >
         <div className="max-w-5xl mx-auto">
@@ -305,6 +444,131 @@ export default function LandingPage({
         </div>
       </section>
 
+      {/* How Pricing Works */}
+      <section className="py-20 px-4 bg-white" data-ocid="pricing.section">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-4xl font-display font-bold text-center mb-4">
+            How Pricing Works
+          </h2>
+          <p className="text-muted-foreground text-center mb-12 text-lg">
+            Simple, transparent, GST-compliant process
+          </p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                step: "1",
+                icon: Package,
+                title: "Submit Specs → Get Quote",
+                desc: "Share your box requirements. We collect competitive quotes from verified suppliers within 20 minutes.",
+                highlight: "Free to request",
+              },
+              {
+                step: "2",
+                icon: CheckCircle,
+                title: "Pay 50% Advance → Production Starts",
+                desc: "Approve the quote and pay 50% advance. Manufacturing begins within 24 hours of payment confirmation.",
+                highlight: "50% advance",
+              },
+              {
+                step: "3",
+                icon: FileText,
+                title: "Delivery + Balance → GST Invoice",
+                desc: "Receive your order, inspect it, and pay the remaining 50% balance. GST-compliant invoice provided.",
+                highlight: "GST invoice included",
+              },
+            ].map(({ step, icon: Icon, title, desc, highlight }) => (
+              <div
+                key={step}
+                className="relative rounded-2xl border-2 border-primary/20 p-6 bg-gradient-to-b from-orange-50/50 to-white"
+              >
+                <div className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">
+                  Step {step}
+                </div>
+                <div className="mt-4 mb-3">
+                  <Icon className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="font-display font-semibold text-base mb-2 leading-snug">
+                  {title}
+                </h3>
+                <p className="text-muted-foreground text-sm leading-relaxed mb-3">
+                  {desc}
+                </p>
+                <span className="inline-block bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full">
+                  {highlight}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section
+        className="py-20 px-4 bg-secondary/40"
+        data-ocid="testimonials.section"
+      >
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-display font-bold text-center mb-4">
+            What Our Customers Say
+          </h2>
+          <p className="text-muted-foreground text-center mb-12 text-lg">
+            Thousands of businesses trust Cargivo for their packaging needs
+          </p>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                quote:
+                  "Got a quote in 15 minutes. Best service for bulk metal boxes. The quality exceeded our expectations and delivery was on time.",
+                name: "Rajesh Kumar",
+                company: "Kumar Industries",
+                city: "Mumbai",
+                rating: 5,
+              },
+              {
+                quote:
+                  "Quality wooden boxes delivered on time. Will order again. The auto-saved address feature saved us so much time on repeat orders.",
+                name: "Priya Shah",
+                company: "Shah Exports Pvt Ltd",
+                city: "Ahmedabad",
+                rating: 5,
+              },
+              {
+                quote:
+                  "Custom plastic boxes exactly as specified. Great supplier network. Our pharmaceutical packaging requirements were met perfectly.",
+                name: "Amit Patel",
+                company: "Patel Pharma Logistics",
+                city: "Pune",
+                rating: 5,
+              },
+            ].map(({ quote, name, company, city }) => (
+              <div
+                key={name}
+                className="bg-white rounded-2xl p-6 shadow-xs border border-border flex flex-col gap-4"
+              >
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star
+                      key={i}
+                      className="h-4 w-4 fill-amber-400 text-amber-400"
+                    />
+                  ))}
+                </div>
+                <Quote className="h-6 w-6 text-primary/30" />
+                <p className="text-foreground/80 text-sm leading-relaxed flex-1 italic">
+                  "{quote}"
+                </p>
+                <div className="border-t border-border pt-4">
+                  <p className="font-semibold text-sm">{name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {company} · {city}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-24 px-4 hero-gradient text-white text-center">
         <h2 className="text-4xl font-display font-bold mb-4">
@@ -339,7 +603,7 @@ export default function LandingPage({
         <div className="max-w-5xl mx-auto space-y-4">
           {/* Top row */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <img src={cargivoLogo} alt="Cargivo" className="h-10 w-auto" />
+            <LogoImage className="h-10 w-auto" />
             <p className="text-sm text-muted-foreground text-center">
               © {new Date().getFullYear()}. Built with love using{" "}
               <a
@@ -352,7 +616,7 @@ export default function LandingPage({
               </a>
             </p>
             <a
-              href="https://linkedin.com/company/cargivo"
+              href="https://www.linkedin.com/company/cargivo/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:text-blue-700 transition-colors"
