@@ -24,6 +24,10 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const AdminLoginResult = IDL.Variant({
+  'ok' : IDL.Null,
+  'errInvalid' : IDL.Text,
+});
 export const CustomerProfile = IDL.Record({
   'contactName' : IDL.Text,
   'gstNumber' : IDL.Text,
@@ -174,12 +178,33 @@ export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'approveQuote' : IDL.Func([IDL.Nat], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'changeAdminPassword' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [AdminLoginResult],
+      [],
+    ),
+  'clearAllDataAdmin' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'getAllCustomers' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Principal, CustomerProfile))],
       ['query'],
     ),
+  'getAllCustomersAdmin' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, CustomerProfile))],
+      ['query'],
+    ),
+  'getAllEmailCustomersAdmin' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Vec(CustomerProfile)],
+      ['query'],
+    ),
   'getAllQuoteRequests' : IDL.Func([], [IDL.Vec(QuoteRequest)], ['query']),
+  'getAllQuoteRequestsAdmin' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Vec(QuoteRequest)],
+      ['query'],
+    ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(CustomerProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getEmailUserProfile' : IDL.Func(
@@ -196,6 +221,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getOrder' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
+  'getOrderAdmin' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Nat],
+      [IDL.Opt(Order)],
+      ['query'],
+    ),
   'getQuotation' : IDL.Func([IDL.Nat], [IDL.Opt(Quotation)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -205,6 +235,7 @@ export const idlService = IDL.Service({
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'loginEmailUser' : IDL.Func([LoginEmailUserArgs], [LoginEmailUserResult], []),
   'markAdvancePaid' : IDL.Func([IDL.Nat], [], []),
+  'markAdvancePaidAdmin' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat], [], []),
   'registerCustomerProfile' : IDL.Func([RegisterCustomerProfileArgs], [], []),
   'registerEmailUser' : IDL.Func(
       [RegisterEmailUserArgs],
@@ -214,6 +245,7 @@ export const idlService = IDL.Service({
   'rejectQuote' : IDL.Func([IDL.Nat], [], []),
   'saveCallerUserProfile' : IDL.Func([CustomerProfile], [], []),
   'sendQuotation' : IDL.Func([QuotationArgs], [], []),
+  'sendQuotationAdmin' : IDL.Func([IDL.Text, IDL.Text, QuotationArgs], [], []),
   'submitQuoteRequest' : IDL.Func([QuoteRequestArgs], [IDL.Nat], []),
   'submitQuoteRequestWithEmail' : IDL.Func(
       [IDL.Text, IDL.Text, QuoteRequestArgs],
@@ -226,6 +258,17 @@ export const idlService = IDL.Service({
       [],
     ),
   'updateOrderStatus' : IDL.Func([OrderUpdateArgs], [], []),
+  'updateOrderStatusAdmin' : IDL.Func(
+      [IDL.Text, IDL.Text, OrderUpdateArgs],
+      [],
+      [],
+    ),
+  'updateRequestStatusAdmin' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Nat, IDL.Text],
+      [],
+      [],
+    ),
+  'verifyAdminLogin' : IDL.Func([IDL.Text, IDL.Text], [AdminLoginResult], []),
 });
 
 export const idlInitArgs = [];
@@ -246,6 +289,10 @@ export const idlFactory = ({ IDL }) => {
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const AdminLoginResult = IDL.Variant({
+    'ok' : IDL.Null,
+    'errInvalid' : IDL.Text,
   });
   const CustomerProfile = IDL.Record({
     'contactName' : IDL.Text,
@@ -397,12 +444,33 @@ export const idlFactory = ({ IDL }) => {
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'approveQuote' : IDL.Func([IDL.Nat], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'changeAdminPassword' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [AdminLoginResult],
+        [],
+      ),
+    'clearAllDataAdmin' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'getAllCustomers' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Principal, CustomerProfile))],
         ['query'],
       ),
+    'getAllCustomersAdmin' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, CustomerProfile))],
+        ['query'],
+      ),
+    'getAllEmailCustomersAdmin' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Vec(CustomerProfile)],
+        ['query'],
+      ),
     'getAllQuoteRequests' : IDL.Func([], [IDL.Vec(QuoteRequest)], ['query']),
+    'getAllQuoteRequestsAdmin' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Vec(QuoteRequest)],
+        ['query'],
+      ),
     'getCallerUserProfile' : IDL.Func(
         [],
         [IDL.Opt(CustomerProfile)],
@@ -423,6 +491,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getOrder' : IDL.Func([IDL.Nat], [IDL.Opt(Order)], ['query']),
+    'getOrderAdmin' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Nat],
+        [IDL.Opt(Order)],
+        ['query'],
+      ),
     'getQuotation' : IDL.Func([IDL.Nat], [IDL.Opt(Quotation)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
@@ -436,6 +509,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'markAdvancePaid' : IDL.Func([IDL.Nat], [], []),
+    'markAdvancePaidAdmin' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat], [], []),
     'registerCustomerProfile' : IDL.Func([RegisterCustomerProfileArgs], [], []),
     'registerEmailUser' : IDL.Func(
         [RegisterEmailUserArgs],
@@ -445,6 +519,11 @@ export const idlFactory = ({ IDL }) => {
     'rejectQuote' : IDL.Func([IDL.Nat], [], []),
     'saveCallerUserProfile' : IDL.Func([CustomerProfile], [], []),
     'sendQuotation' : IDL.Func([QuotationArgs], [], []),
+    'sendQuotationAdmin' : IDL.Func(
+        [IDL.Text, IDL.Text, QuotationArgs],
+        [],
+        [],
+      ),
     'submitQuoteRequest' : IDL.Func([QuoteRequestArgs], [IDL.Nat], []),
     'submitQuoteRequestWithEmail' : IDL.Func(
         [IDL.Text, IDL.Text, QuoteRequestArgs],
@@ -457,6 +536,17 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'updateOrderStatus' : IDL.Func([OrderUpdateArgs], [], []),
+    'updateOrderStatusAdmin' : IDL.Func(
+        [IDL.Text, IDL.Text, OrderUpdateArgs],
+        [],
+        [],
+      ),
+    'updateRequestStatusAdmin' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Nat, IDL.Text],
+        [],
+        [],
+      ),
+    'verifyAdminLogin' : IDL.Func([IDL.Text, IDL.Text], [AdminLoginResult], []),
   });
 };
 

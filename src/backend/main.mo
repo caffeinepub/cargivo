@@ -3,11 +3,13 @@ import Map "mo:core/Map";
 import Array "mo:core/Array";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
+
 import Principal "mo:core/Principal";
 import Order "mo:core/Order";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
+
 
 actor {
   let accessControlState = AccessControl.initState();
@@ -182,18 +184,40 @@ actor {
   // Seed test customer account on first deployment
   if (not testAccountSeeded) {
     let testProfile : CustomerProfile = {
-      companyName = "Test Company Pvt Ltd";
-      gstNumber = "27AAACT2727Q1Z5";
-      address = "400001 | Maharashtra | Mumbai | Near Station | Test Building | Shop 1";
+      companyName = "Cargivo Test Company";
+      gstNumber = "27AABCT3518Q1ZL";
+      address = "400001 | Maharashtra | Mumbai | Near CST Station | Cargivo House | Shop 5";
       phone = "9876543210";
-      contactName = "Test User";
-      email = "test@cargivo.com";
+      contactName = "Test Customer";
+      email = "customer@cargivo.com";
     };
     let testRecord : EmailUserRecord = {
-      passwordHash = "Test@1234";
+      passwordHash = "Cargivo@2023";
       profile = testProfile;
     };
-    emailUsers.add("test@cargivo.com", testRecord);
+    emailUsers.add("customer@cargivo.com", testRecord);
+
+    // Seed a sample quote request for the test customer
+    let emailPrincipal = Principal.fromText("2vxsx-fae");
+    let sampleRequest : QuoteRequest = {
+      id = 1;
+      customerId = emailPrincipal;
+      boxType = "Metal";
+      length = 24.0;
+      width = 18.0;
+      height = 12.0;
+      material = "";
+      quantity = 50;
+      drawingFileId = null;
+      deliveryLocation = "400001 | Maharashtra | Mumbai | Andheri East | Cargivo House | Shop 5";
+      status = "pending_quote";
+      createdAt = 1710000000000000000;
+      adminNotes = null;
+    };
+    quoteRequests.add(1, sampleRequest);
+    emailRequestOwners.add(1, "customer@cargivo.com");
+    nextRequestId := 2;
+
     testAccountSeeded := true;
   };
 
@@ -213,6 +237,21 @@ actor {
     };
     adminPassword := newPassword;
     #ok;
+  };
+
+  // Clear all user accounts and quote requests (admin only)
+  public shared func clearAllDataAdmin(email : Text, password : Text) : async () {
+    if (not isAdminCredentials(email, password)) {
+      Runtime.trap("Unauthorized: Invalid admin credentials");
+    };
+    emailUsers := Map.empty<Text, EmailUserRecord>();
+    customerProfiles := Map.empty<Principal, CustomerProfile>();
+    quoteRequests := Map.empty<Nat, QuoteRequest>();
+    quotations := Map.empty<Nat, Quotation>();
+    orders := Map.empty<Nat, Order>();
+    emailRequestOwners := Map.empty<Nat, Text>();
+    nextRequestId := 1;
+    testAccountSeeded := false;
   };
 
   //-------------- Admin-password versions of admin APIs ----------------//

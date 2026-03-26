@@ -20,40 +20,40 @@
 
 @layer base {
   :root {
-    /* Dark industrial theme - navy + orange */
-    --background: 0.17 0.04 255;
-    --foreground: 0.96 0.01 255;
-    --card: 0.22 0.04 255;
-    --card-foreground: 0.96 0.01 255;
-    --popover: 0.22 0.04 255;
-    --popover-foreground: 0.96 0.01 255;
-    --primary: 0.7 0.2 44;
-    --primary-foreground: 0.1 0.02 255;
-    --secondary: 0.28 0.04 255;
-    --secondary-foreground: 0.9 0.01 255;
-    --muted: 0.25 0.04 255;
-    --muted-foreground: 0.62 0.03 255;
-    --accent: 0.28 0.04 255;
-    --accent-foreground: 0.96 0.01 255;
+    /* Light theme - clean white + orange */
+    --background: 0.99 0.002 90;
+    --foreground: 0.18 0.02 255;
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.02 255;
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.02 255;
+    --primary: 0.68 0.21 44;
+    --primary-foreground: 1 0 0;
+    --secondary: 0.96 0.01 90;
+    --secondary-foreground: 0.18 0.02 255;
+    --muted: 0.95 0.01 90;
+    --muted-foreground: 0.5 0.02 255;
+    --accent: 0.96 0.02 44;
+    --accent-foreground: 0.68 0.21 44;
     --destructive: 0.55 0.22 27;
-    --destructive-foreground: 0.97 0.0 0;
-    --border: 0.28 0.04 255;
-    --input: 0.28 0.04 255;
-    --ring: 0.7 0.2 44;
-    --radius: 0.5rem;
-    --chart-1: 0.7 0.2 44;
+    --destructive-foreground: 1 0 0;
+    --border: 0.9 0.01 255;
+    --input: 0.9 0.01 255;
+    --ring: 0.68 0.21 44;
+    --radius: 0.625rem;
+    --chart-1: 0.68 0.21 44;
     --chart-2: 0.6 0.18 200;
     --chart-3: 0.65 0.16 150;
     --chart-4: 0.55 0.18 310;
     --chart-5: 0.75 0.14 90;
-    --sidebar: 0.14 0.04 255;
+    --sidebar: 0.18 0.04 255;
     --sidebar-foreground: 0.96 0.01 255;
-    --sidebar-primary: 0.7 0.2 44;
-    --sidebar-primary-foreground: 0.1 0.02 255;
+    --sidebar-primary: 0.68 0.21 44;
+    --sidebar-primary-foreground: 1 0 0;
     --sidebar-accent: 0.22 0.04 255;
     --sidebar-accent-foreground: 0.96 0.01 255;
     --sidebar-border: 0.28 0.04 255;
-    --sidebar-ring: 0.7 0.2 44;
+    --sidebar-ring: 0.68 0.21 44;
   }
 }
 
@@ -77,20 +77,24 @@
 
 @layer utilities {
   .text-gradient-orange {
-    background: linear-gradient(135deg, oklch(0.7 0.2 44), oklch(0.8 0.18 60));
+    background: linear-gradient(
+      135deg,
+      oklch(0.68 0.21 44),
+      oklch(0.78 0.18 60)
+    );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  .grid-noise {
-    background-image: radial-gradient(
-      circle at 1px 1px,
-      oklch(0.28 0.04 255 / 0.6) 1px,
-      transparent 0
+  .hero-gradient {
+    background: linear-gradient(
+      135deg,
+      oklch(0.68 0.21 44) 0%,
+      oklch(0.78 0.18 55) 50%,
+      oklch(0.85 0.16 70) 100%
     );
-    background-size: 32px 32px;
   }
   .glow-orange {
-    box-shadow: 0 0 40px oklch(0.7 0.2 44 / 0.25);
+    box-shadow: 0 0 40px oklch(0.68 0.21 44 / 0.25);
   }
 }

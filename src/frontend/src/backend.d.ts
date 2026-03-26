@@ -87,6 +87,13 @@ export interface Order {
     advancePaid: boolean;
     customerId: Principal;
 }
+export type AdminLoginResult = {
+    __kind__: "ok";
+    ok: null;
+} | {
+    __kind__: "errInvalid";
+    errInvalid: string;
+};
 export interface Quotation {
     deliveryCharge: number;
     requestId: bigint;
@@ -154,6 +161,8 @@ export enum UserRole {
 export interface backendInterface {
     approveQuote(requestId: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    changeAdminPassword(email: string, oldPassword: string, newPassword: string): Promise<AdminLoginResult>;
+    clearAllDataAdmin(email: string, password: string): Promise<void>;
     getAllCustomers(): Promise<Array<[Principal, CustomerProfile]>>;
     getAllCustomersAdmin(email: string, password: string): Promise<Array<[Principal, CustomerProfile]>>;
     getAllEmailCustomersAdmin(email: string, password: string): Promise<Array<CustomerProfile>>;
@@ -167,6 +176,7 @@ export interface backendInterface {
     getMyQuoteRequests(): Promise<Array<QuoteRequest>>;
     getMyQuoteRequestsWithEmail(email: string, password: string): Promise<Array<QuoteRequest>>;
     getOrder(requestId: bigint): Promise<Order | null>;
+    getOrderAdmin(email: string, password: string, requestId: bigint): Promise<Order | null>;
     getQuotation(requestId: bigint): Promise<Quotation | null>;
     getUserProfile(user: Principal): Promise<CustomerProfile | null>;
     isCallerAdmin(): Promise<boolean>;
@@ -183,6 +193,7 @@ export interface backendInterface {
     submitQuoteRequestWithEmail(email: string, password: string, args: QuoteRequestArgs): Promise<bigint>;
     updateEmailUserProfile(args: EmailProfileUpdateArgs): Promise<UpdateEmailUserProfileResult>;
     updateOrderStatus(args: OrderUpdateArgs): Promise<void>;
-    updateRequestStatusAdmin(email: string, password: string, requestId: bigint, status: string): Promise<void>;
     updateOrderStatusAdmin(email: string, password: string, args: OrderUpdateArgs): Promise<void>;
+    updateRequestStatusAdmin(email: string, password: string, requestId: bigint, status: string): Promise<void>;
+    verifyAdminLogin(email: string, password: string): Promise<AdminLoginResult>;
 }

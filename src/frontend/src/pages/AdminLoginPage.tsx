@@ -1,139 +1,127 @@
+import type { NavigateFn } from "@/App";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useActor } from "@/hooks/useActor";
-import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { Eye, EyeOff, Loader2, Lock, Shield } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, Shield } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-interface AdminLoginPageProps {
-  onNavigate: (path: string) => void;
+interface Props {
+  navigate: NavigateFn;
+  adminLogin: (
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
-export function AdminLoginPage({ onNavigate }: AdminLoginPageProps) {
+export default function AdminLoginPage({ navigate, adminLogin }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { adminLogin } = useAdminAuth();
-  const { actor } = useActor();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please enter email and password");
-      return;
-    }
-    if (!actor) {
-      toast.error("Not connected to backend. Please try again.");
-      return;
-    }
     setIsLoading(true);
-    try {
-      const result = await actor.loginEmailUser({ email, password });
-      if (result.__kind__ === "ok") {
-        adminLogin(email, password);
-        toast.success("Welcome to Admin Panel");
-        onNavigate("/admin");
-      } else {
-        toast.error("Invalid admin credentials");
-      }
-    } catch (err: any) {
-      toast.error(err?.message || "Login failed");
-    } finally {
-      setIsLoading(false);
+    const result = await adminLogin(email, password);
+    setIsLoading(false);
+    if (result.success) {
+      toast.success("Welcome, Admin!");
+      navigate("/admin");
+    } else {
+      toast.error(result.error ?? "Invalid credentials");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-orange-950 flex items-center justify-center p-4">
-      <button
-        type="button"
-        onClick={() => onNavigate("/")}
-        className="absolute top-6 left-6 text-sm text-gray-400 hover:text-white flex items-center gap-1 transition-colors"
-      >
-        ← Back to Home
-      </button>
+    <div className="min-h-screen bg-secondary/40 flex flex-col">
+      <div className="p-4">
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          data-ocid="admin_login.back.link"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Home
+        </button>
+      </div>
 
-      <div className="w-full max-w-md">
-        <div className="bg-gray-900/80 border border-gray-700/50 backdrop-blur-xl rounded-2xl p-8 shadow-2xl">
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <img
-              src="/assets/uploads/image-4-1.png"
-              alt="Cargivo"
-              className="h-14 w-auto mx-auto mb-4 object-contain"
-            />
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Shield className="w-5 h-5 text-orange-400" />
-              <h1 className="text-xl font-bold text-white">Admin Portal</h1>
+            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Shield className="h-8 w-8 text-primary" />
             </div>
-            <p className="text-gray-400 text-sm">Authorized personnel only</p>
+            <h1 className="text-3xl font-display font-bold">Admin Portal</h1>
+            <p className="text-muted-foreground mt-1">
+              Access the Cargivo admin dashboard
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1.5">
-              <Label className="text-gray-300 text-sm">Admin Email</Label>
-              <Input
-                type="email"
-                placeholder="admin@cargivo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="bg-gray-800/60 border-gray-600 text-white placeholder:text-gray-500 focus:border-orange-500"
-                autoComplete="username"
-              />
+          <div
+            className="bg-white rounded-2xl shadow-xs border border-border p-8"
+            data-ocid="admin_login.panel"
+          >
+            <div className="mb-6 p-3 bg-accent rounded-xl">
+              <p className="text-xs text-muted-foreground text-center">
+                Default: admin@cargivo.com / Cargivo@2024
+              </p>
             </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-gray-300 text-sm">Password</Label>
-              <div className="relative">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <Label htmlFor="admin-email">Admin Email</Label>
                 <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter admin password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-gray-800/60 border-gray-600 text-white placeholder:text-gray-500 focus:border-orange-500 pr-10"
-                  autoComplete="current-password"
+                  id="admin-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@cargivo.com"
+                  className="mt-1"
+                  data-ocid="admin_login.input"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
               </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold h-11 rounded-xl transition-all"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                <>
-                  <Lock className="mr-2 h-4 w-4" />
-                  Login to Admin Panel
-                </>
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-6 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-            <p className="text-xs text-orange-300/80 text-center">
-              This portal is for Cargivo administrators only. Unauthorized
-              access is prohibited.
-            </p>
+              <div>
+                <Label htmlFor="admin-password">Password</Label>
+                <div className="relative mt-1">
+                  <Input
+                    id="admin-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    data-ocid="admin_login.input"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword((p) => !p)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                disabled={isLoading}
+                data-ocid="admin_login.submit_button"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logging
+                    in...
+                  </>
+                ) : (
+                  "Login to Admin"
+                )}
+              </Button>
+            </form>
           </div>
         </div>
       </div>

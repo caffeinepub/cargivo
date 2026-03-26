@@ -1,184 +1,135 @@
-import { OnboardingModal } from "@/components/OnboardingModal";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useEmailAuth } from "@/hooks/useEmailAuth";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { useGetMyProfile, useIsCallerAdmin } from "@/hooks/useQueries";
-import { AdminDashboard } from "@/pages/AdminDashboard";
-import { AdminLoginPage } from "@/pages/AdminLoginPage";
-import { CustomerDashboard } from "@/pages/CustomerDashboard";
-import { InvoicePage } from "@/pages/InvoicePage";
-import { LandingPage } from "@/pages/LandingPage";
-import { LoginPage } from "@/pages/LoginPage";
-import { useEffect, useState } from "react";
+import AdminDashboard from "@/pages/AdminDashboard";
+import AdminLoginPage from "@/pages/AdminLoginPage";
+import CustomerDashboard from "@/pages/CustomerDashboard";
+import LandingPage from "@/pages/LandingPage";
+import LoginPage from "@/pages/LoginPage";
+import PrivacyPolicyPage from "@/pages/PrivacyPolicyPage";
+import RefundPolicyPage from "@/pages/RefundPolicyPage";
+import TermsOfServicePage from "@/pages/TermsOfServicePage";
+import { useCallback, useState } from "react";
 
-function useRouter() {
-  const [path, setPath] = useState(window.location.pathname);
-
-  useEffect(() => {
-    const handler = () => setPath(window.location.pathname);
-    window.addEventListener("popstate", handler);
-    return () => window.removeEventListener("popstate", handler);
-  }, []);
-
-  const navigate = (to: string) => {
-    history.pushState({}, "", to);
-    setPath(to);
-  };
-
-  return { path, navigate };
-}
-
-function AppLoader() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="space-y-3 w-64">
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-4/5" />
-        <Skeleton className="h-3 w-3/5" />
-      </div>
-    </div>
-  );
-}
+export type NavigateFn = (path: string) => void;
 
 export default function App() {
-  const { path, navigate } = useRouter();
-  const { identity, login, isInitializing } = useInternetIdentity();
-  const { emailUser, isEmailAuthenticated, emailLogout } = useEmailAuth();
-  const { isAdminAuthenticated } = useAdminAuth();
+  const [path, setPath] = useState(
+    () => window.location.pathname.replace(/^\/cargivo/, "") || "/",
+  );
 
-  const isAuthenticated = !!identity || isEmailAuthenticated;
+  const navigate: NavigateFn = useCallback((to: string) => {
+    const full = to;
+    history.pushState(null, "", full);
+    setPath(to);
+  }, []);
 
   const {
-    data: profile,
-    isLoading: profileLoading,
-    isFetched: profileFetched,
-  } = useGetMyProfile();
-
-  const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
-
-  const showOnboarding =
-    !!identity && profileFetched && !profileLoading && profile === null;
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    // For email-auth users, navigate directly
-    if (isEmailAuthenticated && !identity) {
-      if (path === "/" || path === "" || path === "/login") {
-        navigate("/dashboard");
-      }
-      return;
-    }
-    if (profileLoading || adminLoading) return;
-    if (profile === null) return;
-    if (path === "/" || path === "" || path === "/login") {
-      navigate(isAdmin ? "/admin" : "/dashboard");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    isAuthenticated,
     isEmailAuthenticated,
-    identity,
-    profile,
-    profileLoading,
-    adminLoading,
-    isAdmin,
-    path,
-    navigate,
-  ]);
+    emailLogin,
+    emailLogout,
+    emailSignup,
+    emailUser,
+    emailCredentials,
+  } = useEmailAuth();
+  const {
+    isAdminAuthenticated,
+    adminLogin,
+    adminLogout,
+    adminEmail,
+    adminPassword,
+  } = useAdminAuth();
 
-  if (isInitializing || (!!identity && (profileLoading || adminLoading))) {
-    return <AppLoader />;
-  }
-
-  const invoiceMatch = path.match(/^\/invoice\/(.+)$/);
-  if (invoiceMatch) {
-    if (!isAuthenticated) {
-      navigate("/");
-      return null;
-    }
-    const requestId = BigInt(invoiceMatch[1]);
+  // Route guards
+  if (path === "/dashboard" && !isEmailAuthenticated) {
     return (
-      <>
-        <InvoicePage requestId={requestId} onNavigate={navigate} />
-        <Toaster richColors />
-      </>
+      <LoginPage
+        navigate={navigate}
+        emailLogin={emailLogin}
+        adminLogin={adminLogin}
+        emailSignup={emailSignup}
+      />
     );
   }
-
-  if (path === "/admin-login") {
-    // If already admin, redirect to admin dashboard
-    if (isAdminAuthenticated) {
-      navigate("/admin");
-      return null;
-    }
-    return (
-      <>
-        <AdminLoginPage onNavigate={navigate} />
-        <Toaster richColors />
-      </>
-    );
+  if (path === "/admin" && !isAdminAuthenticated) {
+    return <AdminLoginPage navigate={navigate} adminLogin={adminLogin} />;
   }
 
-  if (path === "/admin") {
-    // Allow admin email auth OR Internet Identity admin
-    if (!isAdminAuthenticated && !identity) {
-      navigate("/admin-login");
-      return null;
-    }
-    return (
-      <>
-        <AdminDashboard onNavigate={navigate} />
-        <Toaster richColors />
-      </>
-    );
-  }
-
-  if (path === "/dashboard") {
-    if (!isAuthenticated) {
-      navigate("/");
-      return null;
-    }
-    // Email-auth user: pass profile directly, skip II profile loading
-    if (isEmailAuthenticated && !identity && emailUser) {
+  switch (path) {
+    case "/login":
+      return (
+        <>
+          <LoginPage
+            navigate={navigate}
+            emailLogin={emailLogin}
+            adminLogin={adminLogin}
+            emailSignup={emailSignup}
+          />
+          <Toaster />
+        </>
+      );
+    case "/admin-login":
+      return (
+        <>
+          <AdminLoginPage navigate={navigate} adminLogin={adminLogin} />
+          <Toaster />
+        </>
+      );
+    case "/dashboard":
       return (
         <>
           <CustomerDashboard
-            onNavigate={navigate}
-            emailProfile={emailUser}
-            onEmailLogout={() => {
-              emailLogout();
-              navigate("/");
-            }}
+            navigate={navigate}
+            emailLogout={emailLogout}
+            emailUser={emailUser}
+            emailCredentials={emailCredentials}
           />
-          <Toaster richColors />
+          <Toaster />
         </>
       );
-    }
-    return (
-      <>
-        <CustomerDashboard onNavigate={navigate} />
-        {showOnboarding && <OnboardingModal open />}
-        <Toaster richColors />
-      </>
-    );
+    case "/admin":
+      return (
+        <>
+          <AdminDashboard
+            navigate={navigate}
+            adminLogout={adminLogout}
+            adminEmail={adminEmail}
+            adminPassword={adminPassword}
+          />
+          <Toaster />
+        </>
+      );
+    case "/privacy-policy":
+      return (
+        <>
+          <PrivacyPolicyPage navigate={navigate} />
+          <Toaster />
+        </>
+      );
+    case "/terms":
+      return (
+        <>
+          <TermsOfServicePage navigate={navigate} />
+          <Toaster />
+        </>
+      );
+    case "/refund-policy":
+      return (
+        <>
+          <RefundPolicyPage navigate={navigate} />
+          <Toaster />
+        </>
+      );
+    default:
+      return (
+        <>
+          <LandingPage
+            navigate={navigate}
+            isEmailAuthenticated={isEmailAuthenticated}
+            emailSignup={emailSignup}
+          />
+          <Toaster />
+        </>
+      );
   }
-
-  if (path === "/login") {
-    return (
-      <>
-        <LoginPage onNavigate={navigate} />
-        <Toaster richColors />
-      </>
-    );
-  }
-
-  return (
-    <>
-      <LandingPage onNavigate={navigate} onLogin={login} />
-      {showOnboarding && <OnboardingModal open />}
-      <Toaster richColors />
-    </>
-  );
 }

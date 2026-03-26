@@ -10,6 +10,8 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export type AdminLoginResult = { 'ok' : null } |
+  { 'errInvalid' : string };
 export interface CustomerProfile {
   'contactName' : string,
   'gstNumber' : string,
@@ -151,8 +153,25 @@ export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'approveQuote' : ActorMethod<[bigint], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'changeAdminPassword' : ActorMethod<
+    [string, string, string],
+    AdminLoginResult
+  >,
+  'clearAllDataAdmin' : ActorMethod<[string, string], undefined>,
   'getAllCustomers' : ActorMethod<[], Array<[Principal, CustomerProfile]>>,
+  'getAllCustomersAdmin' : ActorMethod<
+    [string, string],
+    Array<[Principal, CustomerProfile]>
+  >,
+  'getAllEmailCustomersAdmin' : ActorMethod<
+    [string, string],
+    Array<CustomerProfile>
+  >,
   'getAllQuoteRequests' : ActorMethod<[], Array<QuoteRequest>>,
+  'getAllQuoteRequestsAdmin' : ActorMethod<
+    [string, string],
+    Array<QuoteRequest>
+  >,
   'getCallerUserProfile' : ActorMethod<[], [] | [CustomerProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getEmailUserProfile' : ActorMethod<
@@ -167,11 +186,13 @@ export interface _SERVICE {
     Array<QuoteRequest>
   >,
   'getOrder' : ActorMethod<[bigint], [] | [Order]>,
+  'getOrderAdmin' : ActorMethod<[string, string, bigint], [] | [Order]>,
   'getQuotation' : ActorMethod<[bigint], [] | [Quotation]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [CustomerProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'loginEmailUser' : ActorMethod<[LoginEmailUserArgs], LoginEmailUserResult>,
   'markAdvancePaid' : ActorMethod<[bigint], undefined>,
+  'markAdvancePaidAdmin' : ActorMethod<[string, string, bigint], undefined>,
   'registerCustomerProfile' : ActorMethod<
     [RegisterCustomerProfileArgs],
     undefined
@@ -183,6 +204,10 @@ export interface _SERVICE {
   'rejectQuote' : ActorMethod<[bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[CustomerProfile], undefined>,
   'sendQuotation' : ActorMethod<[QuotationArgs], undefined>,
+  'sendQuotationAdmin' : ActorMethod<
+    [string, string, QuotationArgs],
+    undefined
+  >,
   'submitQuoteRequest' : ActorMethod<[QuoteRequestArgs], bigint>,
   'submitQuoteRequestWithEmail' : ActorMethod<
     [string, string, QuoteRequestArgs],
@@ -193,12 +218,15 @@ export interface _SERVICE {
     UpdateEmailUserProfileResult
   >,
   'updateOrderStatus' : ActorMethod<[OrderUpdateArgs], undefined>,
-  'getAllQuoteRequestsAdmin' : ActorMethod<[string, string], Array<QuoteRequest>>,
-  'getAllCustomersAdmin' : ActorMethod<[string, string], Array<[Principal, CustomerProfile]>>,
-  'sendQuotationAdmin' : ActorMethod<[string, string, QuotationArgs], undefined>,
-  'markAdvancePaidAdmin' : ActorMethod<[string, string, bigint], undefined>,
-  'updateOrderStatusAdmin' : ActorMethod<[string, string, OrderUpdateArgs], undefined>,
-  'updateRequestStatusAdmin' : ActorMethod<[string, string, bigint, string], undefined>,
+  'updateOrderStatusAdmin' : ActorMethod<
+    [string, string, OrderUpdateArgs],
+    undefined
+  >,
+  'updateRequestStatusAdmin' : ActorMethod<
+    [string, string, bigint, string],
+    undefined
+  >,
+  'verifyAdminLogin' : ActorMethod<[string, string], AdminLoginResult>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

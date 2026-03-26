@@ -1,3 +1,5 @@
+import type { NavigateFn } from "@/App";
+import type { RegisterEmailUserArgs } from "@/backend.d";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -7,744 +9,638 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useEmailAuth } from "@/hooks/useEmailAuth";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import {
   ChevronRight,
   Clock,
-  ExternalLink,
-  FileText,
-  Loader2,
+  Eye,
+  EyeOff,
   Package,
-  ShieldCheck,
+  Star,
   Truck,
-  Users,
-  Zap,
 } from "lucide-react";
-import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import cargivoLogo from "/assets/uploads/image-4-1.png";
 
-interface LandingPageProps {
-  onNavigate: (path: string) => void;
-  onLogin: () => void;
+interface Props {
+  navigate: NavigateFn;
+  isEmailAuthenticated: boolean;
+  emailSignup: (
+    args: RegisterEmailUserArgs,
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
-const boxTypes = [
-  {
-    name: "Wooden Crates",
-    desc: "Sturdy plywood & hardwood packaging for fragile goods",
-    icon: "🪵",
-    color: "from-amber-500/40 to-orange-400/20",
-  },
-  {
-    name: "Plastic Boxes",
-    desc: "Lightweight HDPE & PP containers for chemical & food goods",
-    icon: "📦",
-    color: "from-sky-500/40 to-blue-400/20",
-  },
-  {
-    name: "Custom Design",
-    desc: "Fully bespoke fabrication from your drawings or specs",
-    icon: "✏️",
-    color: "from-purple-500/40 to-pink-400/20",
-  },
-];
+export default function LandingPage({
+  navigate,
+  isEmailAuthenticated,
+  emailSignup,
+}: Props) {
+  const [showSignup, setShowSignup] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    companyName: "",
+    gstNumber: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    pincode: "",
+    state: "",
+    city: "",
+    landmark: "",
+    building: "",
+    phone: "",
+    contactName: "",
+  });
 
-const steps = [
-  {
-    num: "01",
-    title: "Submit Requirements",
-    desc: "Fill in box dimensions, material, quantity, and upload your drawing or photo. Takes under 2 minutes.",
-    icon: FileText,
-  },
-  {
-    num: "02",
-    title: "We Collect Quotes",
-    desc: "Our team contacts verified suppliers and negotiates the best prices on your behalf within 10–20 minutes.",
-    icon: Users,
-  },
-  {
-    num: "03",
-    title: "You Approve & Order",
-    desc: "Review the quote, approve and pay 50% advance. Supplier manufactures and delivers using Porter or Uber.",
-    icon: Truck,
-  },
-];
-
-const trust = [
-  {
-    icon: Zap,
-    title: "10–20 Min Quotes",
-    desc: "Fastest turnaround in the industry",
-    bg: "bg-orange-500/20",
-    iconColor: "text-orange-500",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Verified Suppliers",
-    desc: "Every fabricator is background checked",
-    bg: "bg-green-500/20",
-    iconColor: "text-green-500",
-  },
-  {
-    icon: FileText,
-    title: "GST Invoicing",
-    desc: "Automatic GST-compliant invoices",
-    bg: "bg-blue-500/20",
-    iconColor: "text-blue-500",
-  },
-  {
-    icon: Clock,
-    title: "Live Order Tracking",
-    desc: "Track production status in real time",
-    bg: "bg-purple-500/20",
-    iconColor: "text-purple-500",
-  },
-];
-
-const partners = [
-  {
-    emoji: "🚛",
-    name: "Porter",
-    desc: "Last-mile delivery partner",
-    url: "https://porter.in",
-    color: "from-orange-500/30 to-amber-400/15",
-    badgeColor:
-      "text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30",
-  },
-  {
-    emoji: "🚗",
-    name: "Uber",
-    desc: "On-demand transport",
-    url: "https://uber.com",
-    color: "from-slate-500/30 to-gray-400/15",
-    badgeColor:
-      "text-slate-600 bg-slate-100 dark:text-slate-300 dark:bg-slate-800/50",
-  },
-  {
-    emoji: "🏪",
-    name: "IndiaMART",
-    desc: "Supplier marketplace",
-    url: "https://indiamart.com",
-    color: "from-green-500/30 to-emerald-400/15",
-    badgeColor:
-      "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30",
-  },
-  {
-    emoji: "📦",
-    name: "TradeIndia",
-    desc: "B2B trade directory",
-    url: "https://tradeindia.com",
-    color: "from-blue-500/30 to-cyan-400/15",
-    badgeColor:
-      "text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30",
-  },
-];
-
-const statColors = [
-  "text-orange-500",
-  "text-green-500",
-  "text-blue-500",
-  "text-purple-500",
-];
-
-const emptyForm = {
-  companyName: "",
-  contactName: "",
-  email: "",
-  password: "",
-  phone: "",
-  gstNumber: "",
-  address: "",
-};
-
-export function LandingPage({ onNavigate }: LandingPageProps) {
-  const { identity } = useInternetIdentity();
-  const { emailRegister, emailLogin, isEmailAuthenticated } = useEmailAuth();
-  const isAuthenticated = !!identity || isEmailAuthenticated;
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [regError, setRegError] = useState("");
-  const [regLoading, setRegLoading] = useState(false);
-
-  function handleFormChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    setRegError("");
-  }
-
-  async function handleRegisterSubmit(e: React.FormEvent) {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setRegLoading(true);
-    setRegError("");
-    try {
-      const result = await emailRegister({
-        email: form.email,
-        password: form.password,
-        companyName: form.companyName,
-        gstNumber: form.gstNumber,
-        address: form.address,
-        phone: form.phone,
-        contactName: form.contactName,
-      });
-      if (result.__kind__ === "ok") {
-        const loginResult = await emailLogin(form.email, form.password);
-        setShowRegisterModal(false);
-        setForm(emptyForm);
-        if (loginResult.__kind__ === "ok") {
-          toast.success("Account created! Welcome to Cargivo.");
-          onNavigate("/dashboard");
-        } else {
-          toast.success("Account created! Please log in.");
-          onNavigate("/login");
-        }
-      } else if (result.__kind__ === "errEmailTaken") {
-        setRegError("Email already registered. Please log in.");
-      } else {
-        setRegError("Invalid details. Please check your information.");
-      }
-    } catch {
-      setRegError("Registration failed. Please try again.");
-    } finally {
-      setRegLoading(false);
+    if (form.password !== form.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
     }
-  }
+    setIsSubmitting(true);
+    const address = `${form.building}, ${form.landmark}, ${form.city}, ${form.state} - ${form.pincode}`;
+    const result = await emailSignup({
+      companyName: form.companyName,
+      gstNumber: form.gstNumber,
+      email: form.email,
+      password: form.password,
+      address,
+      phone: form.phone,
+      contactName: form.contactName,
+    });
+    setIsSubmitting(false);
+    if (result.success) {
+      toast.success("Account created! Welcome to Cargivo.");
+      setShowSignup(false);
+      navigate("/dashboard");
+    } else {
+      toast.error(result.error ?? "Signup failed");
+    }
+  };
+
+  const handleRequestQuote = () => {
+    if (isEmailAuthenticated) navigate("/dashboard");
+    else navigate("/login");
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Registration Modal */}
-      <Dialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
-        <DialogContent
-          className="max-w-lg max-h-[90vh] overflow-y-auto"
-          data-ocid="register.dialog"
-        >
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">
-              Create Your Account
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleRegisterSubmit} className="space-y-4 mt-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="companyName">Company Name</Label>
-                <Input
-                  id="companyName"
-                  name="companyName"
-                  placeholder="Acme Logistics Pvt Ltd"
-                  value={form.companyName}
-                  onChange={handleFormChange}
-                  required
-                  data-ocid="register.input"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="contactName">Contact Name</Label>
-                <Input
-                  id="contactName"
-                  name="contactName"
-                  placeholder="Rajesh Kumar"
-                  value={form.contactName}
-                  onChange={handleFormChange}
-                  required
-                  data-ocid="register.input"
-                />
-              </div>
+      {/* Navbar */}
+      <header
+        className="sticky top-0 z-50 bg-white border-b border-border shadow-xs"
+        data-ocid="nav.panel"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-8">
+              <img src={cargivoLogo} alt="Cargivo" className="h-14 w-auto" />
+              <nav className="hidden md:flex items-center gap-6">
+                <a
+                  href="#how-it-works"
+                  className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors"
+                  data-ocid="nav.link"
+                >
+                  How It Works
+                </a>
+                <a
+                  href="#box-types"
+                  className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors"
+                  data-ocid="nav.link"
+                >
+                  Box Types
+                </a>
+              </nav>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@company.com"
-                value={form.email}
-                onChange={handleFormChange}
-                required
-                data-ocid="register.input"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Create a strong password"
-                value={form.password}
-                onChange={handleFormChange}
-                required
-                data-ocid="register.input"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  placeholder="+91 98765 43210"
-                  value={form.phone}
-                  onChange={handleFormChange}
-                  required
-                  data-ocid="register.input"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="gst">GST Number</Label>
-                <Input
-                  id="gst"
-                  name="gstNumber"
-                  placeholder="22AAAAA0000A1Z5"
-                  value={form.gstNumber}
-                  onChange={handleFormChange}
-                  required
-                  data-ocid="register.input"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="address">Business Address</Label>
-              <Textarea
-                id="address"
-                name="address"
-                placeholder="123 Industrial Area, Mumbai, Maharashtra 400001"
-                value={form.address}
-                onChange={handleFormChange}
-                required
-                rows={3}
-                data-ocid="register.textarea"
-              />
-            </div>
-            {regError && (
-              <p
-                className="text-sm text-red-500"
-                data-ocid="register.error_state"
-              >
-                {regError}
-              </p>
-            )}
-            <div className="flex gap-3 pt-2">
+            <div className="flex items-center gap-3">
               <Button
-                type="button"
                 variant="outline"
-                className="flex-1"
-                onClick={() => setShowRegisterModal(false)}
-                disabled={regLoading}
-                data-ocid="register.cancel_button"
+                className="border-primary text-primary hover:bg-accent"
+                onClick={() => navigate("/login")}
+                data-ocid="nav.login.button"
               >
-                Cancel
+                Login
               </Button>
               <Button
-                type="submit"
-                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 glow-orange"
-                disabled={regLoading}
-                data-ocid="register.submit_button"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => setShowSignup(true)}
+                data-ocid="nav.signup.button"
               >
-                {regLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing
-                    up...
-                  </>
-                ) : (
-                  "Signup"
-                )}
+                Signup
               </Button>
             </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-white">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center">
-            <img
-              src="/assets/generated/logo-transparent.png"
-              alt="Cargivo"
-              className="h-14 w-auto"
-            />
-          </div>
-          <nav className="hidden md:flex items-center gap-8">
-            <a
-              href="#how-it-works"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              How It Works
-            </a>
-            <a
-              href="#box-types"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Box Types
-            </a>
-            <a
-              href="#why-cargivo"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Why Cargivo
-            </a>
-            <a
-              href="#partners"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Partners
-            </a>
-          </nav>
-          <div className="flex items-center gap-3">
-            {isAuthenticated ? (
-              <Button
-                onClick={() => onNavigate("/dashboard")}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                Go to Dashboard
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  onClick={() => onNavigate("/login")}
-                  className="text-gray-800"
-                  data-ocid="landing.login_button"
-                >
-                  Login
-                </Button>
-                <Button
-                  onClick={() => setShowRegisterModal(true)}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  data-ocid="landing.register_button"
-                >
-                  Signup
-                </Button>
-              </>
-            )}
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <section className="relative pt-32 pb-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-background to-blue-600/10" />
-        <div className="absolute inset-0 grid-noise opacity-40" />
-        <div className="absolute top-20 right-0 w-96 h-96 rounded-full bg-orange-400/15 blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="container mx-auto px-4 relative">
-          <motion.div
-            initial={{ opacity: 0, y: 32 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="max-w-3xl"
+      <section
+        className="hero-gradient text-white py-24 px-4"
+        data-ocid="hero.section"
+      >
+        <div className="max-w-5xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
+            <Star className="h-3.5 w-3.5" /> Quotes in under 20 minutes
+          </div>
+          <h1 className="text-5xl md:text-7xl font-display font-bold mb-6 leading-tight">
+            Fast Custom Box Quotes
+          </h1>
+          <p className="text-xl md:text-2xl text-white/85 mb-10 max-w-2xl mx-auto">
+            Connect with verified fabricators for Metal, Wooden, Plastic &
+            Custom cargo boxes. Get competitive quotes fast.
+          </p>
+          <Button
+            size="lg"
+            className="bg-white text-primary hover:bg-white/90 font-semibold text-lg px-8 py-6 rounded-full shadow-lg"
+            onClick={handleRequestQuote}
+            data-ocid="hero.primary_button"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium mb-6">
-              <Zap className="w-3.5 h-3.5" />
-              Quotes in 10–20 minutes
-            </div>
-            <h1 className="text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight mb-6">
-              Custom Cargo Boxes.{" "}
-              <span className="text-gradient-orange">Quotes in Minutes.</span>
-            </h1>
-            <p className="text-xl text-muted-foreground mb-10 max-w-xl leading-relaxed">
-              Submit your box requirements and receive competitive quotes from
-              verified fabricators — wooden, plastic, or fully custom.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Button
-                size="lg"
-                onClick={() =>
-                  isAuthenticated
-                    ? onNavigate("/dashboard")
-                    : onNavigate("/login")
-                }
-                className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8 h-12 glow-orange"
-                data-ocid="landing.request_quote_button"
-              >
-                Request a Quote
-                <ChevronRight className="ml-1 w-4 h-4" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() =>
-                  document
-                    .getElementById("how-it-works")
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
-                className="border-border text-foreground h-12 text-base px-8"
-              >
-                Learn How It Works
-              </Button>
-            </div>
-          </motion.div>
+            Request a Quote <ChevronRight className="ml-2 h-5 w-5" />
+          </Button>
+        </div>
+      </section>
 
-          {/* Stats bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-px bg-border rounded-xl overflow-hidden border border-border"
-          >
-            {[
-              { val: "500+", label: "Quotes Delivered" },
-              { val: "120+", label: "Verified Suppliers" },
-              { val: "98%", label: "On-Time Delivery" },
-              { val: "₹0", label: "Platform Fee" },
-            ].map((stat, i) => (
-              <div key={stat.label} className="bg-card px-6 py-5 text-center">
-                <div className={`text-2xl font-bold ${statColors[i]}`}>
-                  {stat.val}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </motion.div>
+      {/* Stats bar */}
+      <section className="bg-white border-b border-border py-8">
+        <div className="max-w-5xl mx-auto px-4 grid grid-cols-3 gap-8 text-center">
+          <div>
+            <p className="text-3xl font-bold text-primary font-display">500+</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Active Suppliers
+            </p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-primary font-display">
+              &lt;20 min
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Average Quote Time
+            </p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-primary font-display">
+              10,000+
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Orders Fulfilled
+            </p>
+          </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="py-24 border-t border-border">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl font-bold mb-4">
-              How{" "}
-              <span className="relative inline-block">
-                Cargivo Works
-                <span className="absolute -bottom-1 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-orange-500 via-amber-400 to-orange-300" />
-              </span>
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Three simple steps from requirement to delivered box.
-            </p>
-          </motion.div>
-          <div className="grid md:grid-cols-3 gap-8 relative">
-            <div className="hidden md:block absolute top-10 left-[calc(16.67%+1rem)] right-[calc(16.67%+1rem)] h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-            {steps.map((step, i) => (
-              <motion.div
-                key={step.num}
-                initial={{ opacity: 0, y: 32 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15 }}
-                className="relative"
+      <section
+        id="how-it-works"
+        className="py-20 px-4 bg-secondary/40"
+        data-ocid="how_it_works.section"
+      >
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-display font-bold text-center mb-4">
+            How It Works
+          </h2>
+          <p className="text-muted-foreground text-center mb-12 text-lg">
+            Three simple steps to get your custom boxes
+          </p>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: Package,
+                step: "1",
+                title: "Submit Request",
+                desc: "Fill in your box specs — type, dimensions, quantity, and delivery location.",
+              },
+              {
+                icon: Clock,
+                step: "2",
+                title: "Get Quotes in 20 mins",
+                desc: "Our admin collects quotes from verified suppliers and sends you the best price.",
+              },
+              {
+                icon: Truck,
+                step: "3",
+                title: "Confirm & Manufacture",
+                desc: "Pay 50% advance, we manufacture and deliver with GST-compliant invoice.",
+              },
+            ].map(({ icon: Icon, step, title, desc }) => (
+              <div
+                key={step}
+                className="bg-white rounded-2xl p-8 shadow-xs border border-border text-center relative"
               >
-                <div className="bg-card border border-border rounded-xl p-7 h-full hover:border-primary/40 transition-colors">
-                  <div className="flex items-start gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                      <step.icon className="w-6 h-6 text-primary" />
-                    </div>
-                    <span className="text-5xl font-bold text-primary/20 font-display leading-none">
-                      {step.num}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {step.desc}
-                  </p>
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">
+                  {step}
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Box types */}
-      <section id="box-types" className="py-24 border-t border-border">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl font-bold mb-4">
-              <span className="relative inline-block">
-                What We Fabricate
-                <span className="absolute -bottom-1 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-amber-500 via-orange-400 to-pink-400" />
-              </span>
-            </h2>
-            <p className="text-muted-foreground text-lg">
-              Every type of cargo box, custom-built to your specifications.
-            </p>
-          </motion.div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {boxTypes.map((bt, i) => (
-              <motion.div
-                key={bt.name}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className={`relative overflow-hidden rounded-xl border border-border bg-gradient-to-br ${bt.color} p-6 hover:border-primary/40 transition-all cursor-pointer group`}
-                onClick={() =>
-                  isAuthenticated
-                    ? onNavigate("/dashboard")
-                    : onNavigate("/login")
-                }
-              >
-                <div className="text-4xl mb-4">{bt.icon}</div>
-                <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
-                  {bt.name}
+                <div className="w-14 h-14 bg-accent rounded-2xl flex items-center justify-center mx-auto mb-4 mt-2">
+                  <Icon className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="text-xl font-display font-semibold mb-2">
+                  {title}
                 </h3>
-                <p className="text-sm text-muted-foreground">{bt.desc}</p>
-                <ChevronRight className="absolute bottom-5 right-5 w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-              </motion.div>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {desc}
+                </p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Trust indicators */}
-      <section id="why-cargivo" className="py-24 border-t border-border">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl font-bold mb-4">
-              <span className="relative inline-block">
-                Why Choose Cargivo?
-                <span className="absolute -bottom-1 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-green-500 via-blue-500 to-purple-500" />
-              </span>
-            </h2>
-          </motion.div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {trust.map((item, i) => (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-card border border-border rounded-xl p-6 text-center"
+      {/* Box Types */}
+      <section
+        id="box-types"
+        className="py-20 px-4 bg-white"
+        data-ocid="box_types.section"
+      >
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-display font-bold text-center mb-4">
+            Box Types We Fabricate
+          </h2>
+          <p className="text-muted-foreground text-center mb-12 text-lg">
+            Custom dimensions for every industry need
+          </p>
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              {
+                label: "Metal Boxes",
+                color: "from-slate-500 to-slate-700",
+                emoji: "🏗️",
+                desc: "Heavy-duty industrial grade",
+              },
+              {
+                label: "Wooden Boxes",
+                color: "from-amber-600 to-amber-800",
+                emoji: "🪵",
+                desc: "Natural & sustainable",
+              },
+              {
+                label: "Plastic Boxes",
+                color: "from-blue-500 to-blue-700",
+                emoji: "📦",
+                desc: "Lightweight & weatherproof",
+              },
+              {
+                label: "Custom Boxes",
+                color: "from-primary to-orange-600",
+                emoji: "⚙️",
+                desc: "Any material, any spec",
+              },
+            ].map(({ label, color, emoji, desc }) => (
+              <div
+                key={label}
+                className="rounded-2xl overflow-hidden border border-border shadow-xs hover:shadow-md transition-shadow"
               >
                 <div
-                  className={`w-12 h-12 rounded-xl ${item.bg} flex items-center justify-center mx-auto mb-4`}
+                  className={`bg-gradient-to-br ${color} p-8 text-center text-4xl`}
                 >
-                  <item.icon className={`w-6 h-6 ${item.iconColor}`} />
+                  {emoji}
                 </div>
-                <h3 className="font-semibold mb-1">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Partners & Ecosystem */}
-      <section id="partners" className="py-24 border-t border-border">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl font-bold mb-4">
-              <span className="relative inline-block">
-                Our Partners &amp; Ecosystem
-                <span className="absolute -bottom-1 left-0 right-0 h-1 rounded-full bg-gradient-to-r from-orange-500 via-green-500 to-blue-500" />
-              </span>
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              We work with these trusted platforms to deliver your orders.
-            </p>
-          </motion.div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            {partners.map((partner, i) => (
-              <motion.div
-                key={partner.name}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className={`relative overflow-hidden rounded-xl border border-border bg-gradient-to-br ${partner.color} p-6 flex flex-col items-center text-center group hover:border-primary/40 transition-all`}
-              >
-                <div className="text-5xl mb-3">{partner.emoji}</div>
-                <h3 className="font-bold text-lg mb-1">{partner.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {partner.desc}
-                </p>
-                <a
-                  href={partner.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${partner.badgeColor} hover:opacity-80 transition-opacity`}
-                  data-ocid={`partners.link.${i + 1}` as never}
-                >
-                  Visit Site
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </motion.div>
+                <div className="p-4 text-center">
+                  <h3 className="font-display font-semibold">{label}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-24 border-t border-border">
-        <div className="container mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+      <section className="py-24 px-4 hero-gradient text-white text-center">
+        <h2 className="text-4xl font-display font-bold mb-4">
+          Ready to get started?
+        </h2>
+        <p className="text-white/85 text-lg mb-8">
+          Join hundreds of businesses using Cargivo for custom box fabrication
+        </p>
+        <div className="flex gap-4 justify-center flex-wrap">
+          <Button
+            size="lg"
+            className="bg-white text-primary hover:bg-white/90 font-semibold px-8 rounded-full"
+            onClick={() => setShowSignup(true)}
+            data-ocid="cta.signup.button"
           >
-            <div className="inline-block bg-card border border-border rounded-2xl px-12 py-12 max-w-xl">
-              <Package className="w-12 h-12 text-primary mx-auto mb-5" />
-              <h2 className="text-3xl font-bold mb-3">Ready to Get a Quote?</h2>
-              <p className="text-muted-foreground mb-7">
-                Join 500+ businesses that trust Cargivo for custom cargo box
-                fabrication.
-              </p>
-              <Button
-                size="lg"
-                onClick={() =>
-                  isAuthenticated
-                    ? onNavigate("/dashboard")
-                    : onNavigate("/login")
-                }
-                className="bg-primary text-primary-foreground hover:bg-primary/90 px-10 h-12 glow-orange"
-                data-ocid="landing.cta.primary_button"
-              >
-                Get Started
-              </Button>
-            </div>
-          </motion.div>
+            Signup Free
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="border-white text-white hover:bg-white/10 px-8 rounded-full"
+            onClick={() => navigate("/login")}
+            data-ocid="cta.login.button"
+          >
+            Login
+          </Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center">
-            <img
-              src="/assets/generated/logo-transparent.png"
-              alt="Cargivo"
-              className="h-10 w-auto"
-            />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()}. Built with ❤️ using{" "}
+      <footer className="bg-white border-t border-border py-8 px-4">
+        <div className="max-w-5xl mx-auto space-y-4">
+          {/* Top row */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <img src={cargivoLogo} alt="Cargivo" className="h-10 w-auto" />
+            <p className="text-sm text-muted-foreground text-center">
+              © {new Date().getFullYear()}. Built with love using{" "}
+              <a
+                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                caffeine.ai
+              </a>
+            </p>
             <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+              href="https://linkedin.com/company/cargivo"
               target="_blank"
-              rel="noreferrer"
-              className="text-primary hover:underline"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-700 transition-colors"
+              aria-label="Cargivo on LinkedIn"
+              data-ocid="footer.link"
             >
-              caffeine.ai
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                role="img"
+                aria-label="LinkedIn"
+              >
+                <title>LinkedIn</title>
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+              </svg>
             </a>
-          </p>
+          </div>
+          {/* Bottom row - links */}
+          <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground border-t border-border pt-4">
+            <a href="#how-it-works" className="hover:text-primary">
+              How It Works
+            </a>
+            <button
+              type="button"
+              onClick={() => navigate("/privacy-policy")}
+              className="hover:text-primary cursor-pointer"
+              data-ocid="footer.link"
+            >
+              Privacy Policy
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/terms")}
+              className="hover:text-primary cursor-pointer"
+              data-ocid="footer.link"
+            >
+              Terms of Service
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/refund-policy")}
+              className="hover:text-primary cursor-pointer"
+              data-ocid="footer.link"
+            >
+              Refund Policy
+            </button>
+          </div>
         </div>
       </footer>
+
+      {/* Signup Modal */}
+      <Dialog open={showSignup} onOpenChange={setShowSignup}>
+        <DialogContent
+          className="max-w-lg max-h-[90vh] overflow-y-auto"
+          data-ocid="signup.modal"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-display font-bold">
+              Create Account
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSignup} className="space-y-4 mt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label htmlFor="s-company">Company Name *</Label>
+                <Input
+                  id="s-company"
+                  required
+                  value={form.companyName}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, companyName: e.target.value }))
+                  }
+                  placeholder="ABC Exports Pvt Ltd"
+                  data-ocid="signup.input"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="s-gst">GST Number *</Label>
+                <Input
+                  id="s-gst"
+                  required
+                  value={form.gstNumber}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, gstNumber: e.target.value }))
+                  }
+                  placeholder="22AAAAA0000A1Z5"
+                  data-ocid="signup.input"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="s-email">Email *</Label>
+                <Input
+                  id="s-email"
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                  placeholder="you@company.com"
+                  data-ocid="signup.input"
+                />
+              </div>
+              <div>
+                <Label htmlFor="s-password">Password *</Label>
+                <div className="relative">
+                  <Input
+                    id="s-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, password: e.target.value }))
+                    }
+                    placeholder="••••••••"
+                    data-ocid="signup.input"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setShowPassword((p) => !p)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="s-confirm">Confirm Password *</Label>
+                <div className="relative">
+                  <Input
+                    id="s-confirm"
+                    type={showConfirm ? "text" : "password"}
+                    required
+                    value={form.confirmPassword}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        confirmPassword: e.target.value,
+                      }))
+                    }
+                    placeholder="••••••••"
+                    data-ocid="signup.input"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    onClick={() => setShowConfirm((p) => !p)}
+                  >
+                    {showConfirm ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-border pt-4">
+              <p className="text-sm font-semibold text-foreground mb-3">
+                Address
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="s-pincode">Pincode *</Label>
+                  <Input
+                    id="s-pincode"
+                    required
+                    value={form.pincode}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, pincode: e.target.value }))
+                    }
+                    placeholder="400001"
+                    data-ocid="signup.input"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="s-state">State *</Label>
+                  <Input
+                    id="s-state"
+                    required
+                    value={form.state}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, state: e.target.value }))
+                    }
+                    placeholder="Maharashtra"
+                    data-ocid="signup.input"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="s-city">City *</Label>
+                  <Input
+                    id="s-city"
+                    required
+                    value={form.city}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, city: e.target.value }))
+                    }
+                    placeholder="Mumbai"
+                    data-ocid="signup.input"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="s-landmark">Landmark *</Label>
+                  <Input
+                    id="s-landmark"
+                    required
+                    value={form.landmark}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, landmark: e.target.value }))
+                    }
+                    placeholder="Near Station"
+                    data-ocid="signup.input"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="s-building">Building / Shop No *</Label>
+                  <Input
+                    id="s-building"
+                    required
+                    value={form.building}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, building: e.target.value }))
+                    }
+                    placeholder="Shop 12, Andheri Plaza"
+                    data-ocid="signup.input"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="s-phone">Phone Number *</Label>
+                <Input
+                  id="s-phone"
+                  required
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, phone: e.target.value }))
+                  }
+                  placeholder="+91 9876543210"
+                  data-ocid="signup.input"
+                />
+              </div>
+              <div>
+                <Label htmlFor="s-contact">Contact Name *</Label>
+                <Input
+                  id="s-contact"
+                  required
+                  value={form.contactName}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, contactName: e.target.value }))
+                  }
+                  placeholder="Rahul Sharma"
+                  data-ocid="signup.input"
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+              disabled={isSubmitting}
+              data-ocid="signup.submit_button"
+            >
+              {isSubmitting ? "Creating Account..." : "Create Account"}
+            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <button
+                type="button"
+                className="text-primary hover:underline font-medium"
+                onClick={() => {
+                  setShowSignup(false);
+                  navigate("/login");
+                }}
+              >
+                Login
+              </button>
+            </p>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

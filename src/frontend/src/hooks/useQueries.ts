@@ -119,14 +119,14 @@ export function useAdminGetAllCustomers() {
     queryFn: async () => {
       if (!actor || !adminSession) return [];
       try {
-        const result = await actor.getAllCustomersAdmin(
+        const result = await actor.getAllEmailCustomersAdmin(
           adminSession.email,
           adminSession.password,
         );
-        console.log("[Admin] getAllCustomersAdmin result:", result);
-        return result.map(([, profile]) => profile);
+        console.log("[Admin] getAllEmailCustomersAdmin result:", result);
+        return result;
       } catch (err) {
-        console.error("[Admin] getAllCustomersAdmin error:", err);
+        console.error("[Admin] getAllEmailCustomersAdmin error:", err);
         throw err;
       }
     },
@@ -235,6 +235,24 @@ export function useAdminUpdateRequestStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminAllQuoteRequests"] });
+    },
+  });
+}
+
+export function useAdminClearAllData() {
+  const { actor } = useActor();
+  const { adminSession } = useAdminAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor || !adminSession)
+        throw new Error("Not authenticated as admin");
+      return actor.clearAllDataAdmin(adminSession.email, adminSession.password);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminAllQuoteRequests"] });
+      queryClient.invalidateQueries({ queryKey: ["adminAllEmailCustomers"] });
+      queryClient.invalidateQueries({ queryKey: ["adminOrder"] });
     },
   });
 }

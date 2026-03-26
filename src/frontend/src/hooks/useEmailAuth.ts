@@ -1,78 +1,97 @@
 import type { CustomerProfile, RegisterEmailUserArgs } from "@/backend.d";
-import { createActorWithConfig } from "@/config";
-import { useEffect, useState } from "react";
+import { useActor } from "@/hooks/useActor";
+import { useCallback, useState } from "react";
 
-const SESSION_KEY = "cargivo_email_session";
+const STORAGE_KEY = "emailAuth";
 
-interface EmailSession {
+interface EmailAuthData {
   email: string;
   password: string;
   profile: CustomerProfile;
 }
 
-function loadSession(): EmailSession | null {
+function loadFromStorage(): EmailAuthData | null {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as EmailSession) : null;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as EmailAuthData;
   } catch {
     return null;
   }
 }
 
-function saveSession(session: EmailSession) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  // Notify all hook instances in the same tab
-  window.dispatchEvent(new CustomEvent("cargivo_auth_change"));
-}
-
-function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
-  window.dispatchEvent(new CustomEvent("cargivo_auth_change"));
-}
-
-async function getActor() {
-  return createActorWithConfig();
-}
-
 export function useEmailAuth() {
-  const [session, setSession] = useState<EmailSession | null>(loadSession);
+  const [authData, setAuthData] = useState<EmailAuthData | null>(
+    loadFromStorage,
+  );
+  const { actor } = useActor();
 
-  // Re-sync state whenever another instance updates localStorage
-  useEffect(() => {
-    const handler = () => setSession(loadSession());
-    window.addEventListener("cargivo_auth_change", handler);
-    return () => window.removeEventListener("cargivo_auth_change", handler);
+  const emailLogin = useCallback(
+    async (email: string, password: string) => {
+      if (!actor) return { success: false, error: "Backend not ready" };
+      const result = await actor.loginEmailUser({ email, password });
+      if (result.__kind__ === "ok") {
+        const data: EmailAuthData = { email, password, profile: result.ok };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        setAuthData(data);
+        return { success: true, profile: result.ok };
+      }
+      return {
+        success: false,
+        error:
+          result.__kind__ === "errWrongPassword"
+            ? "Wrong password"
+            : "Account not found",
+      };
+    },
+    [actor],
+  );
+
+  const emailSignup = useCallback(
+    async (args: RegisterEmailUserArgs) => {
+      if (!actor) return { success: false, error: "Backend not ready" };
+      const result = await actor.registerEmailUser(args);
+      if (result.__kind__ === "ok") {
+        const loginResult = await actor.loginEmailUser({
+          email: args.email,
+          password: args.password,
+        });
+        if (loginResult.__kind__ === "ok") {
+          const data: EmailAuthData = {
+            email: args.email,
+            password: args.password,
+            profile: loginResult.ok,
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          setAuthData(data);
+          return { success: true, profile: loginResult.ok };
+        }
+        return { success: true };
+      }
+      if (result.__kind__ === "errEmailTaken")
+        return { success: false, error: "Email already registered" };
+      return { success: false, error: "Registration failed" };
+    },
+    [actor],
+  );
+
+  const emailLogout = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setAuthData(null);
   }, []);
 
-  const emailUser = session?.profile ?? null;
-  const isEmailAuthenticated = session !== null;
-
-  const emailLogin = async (email: string, password: string) => {
-    const actor = await getActor();
-    const result = await actor.loginEmailUser({ email, password });
-    if (result.__kind__ === "ok") {
-      const newSession: EmailSession = { email, password, profile: result.ok };
-      saveSession(newSession);
-      setSession(newSession);
-    }
-    return result;
-  };
-
-  const emailRegister = async (args: RegisterEmailUserArgs) => {
-    const actor = await getActor();
-    return actor.registerEmailUser(args);
-  };
-
-  const emailLogout = () => {
-    clearSession();
-    setSession(null);
-  };
-
   return {
-    emailUser,
+    emailUser: authData?.profile ?? null,
+    emailCredentials: authData
+      ? { email: authData.email, password: authData.password }
+      : null,
+    isEmailAuthenticated: authData !== null,
     emailLogin,
-    emailRegister,
     emailLogout,
-    isEmailAuthenticated,
+    emailSignup,
+    // Compat with useQueries
+    emailSession: authData
+      ? { email: authData.email, password: authData.password }
+      : null,
   };
 }

@@ -1,34 +1,58 @@
-import { useEffect, useState } from "react";
+import { useActor } from "@/hooks/useActor";
+import { useCallback, useState } from "react";
 
-const ADMIN_SESSION_KEY = "cargivo_admin_session";
+const STORAGE_KEY = "adminAuth";
 
-export interface AdminSession {
+interface AdminAuthData {
   email: string;
   password: string;
 }
 
+function loadFromStorage(): AdminAuthData | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as AdminAuthData;
+  } catch {
+    return null;
+  }
+}
+
 export function useAdminAuth() {
-  const [adminSession, setAdminSession] = useState<AdminSession | null>(() => {
-    try {
-      const stored = localStorage.getItem(ADMIN_SESSION_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [authData, setAuthData] = useState<AdminAuthData | null>(
+    loadFromStorage,
+  );
+  const { actor } = useActor();
 
-  const isAdminAuthenticated = !!adminSession;
+  const adminLogin = useCallback(
+    async (email: string, password: string) => {
+      if (!actor) return { success: false, error: "Backend not ready" };
+      const result = await actor.verifyAdminLogin(email, password);
+      if (result.__kind__ === "ok") {
+        const data: AdminAuthData = { email, password };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        setAuthData(data);
+        return { success: true };
+      }
+      return { success: false, error: "Invalid admin credentials" };
+    },
+    [actor],
+  );
 
-  const adminLogin = (email: string, password: string) => {
-    const session: AdminSession = { email, password };
-    localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-    setAdminSession(session);
+  const adminLogout = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setAuthData(null);
+  }, []);
+
+  return {
+    isAdminAuthenticated: authData !== null,
+    adminLogin,
+    adminLogout,
+    adminEmail: authData?.email ?? "",
+    adminPassword: authData?.password ?? "",
+    // Compat with useQueries
+    adminSession: authData
+      ? { email: authData.email, password: authData.password }
+      : null,
   };
-
-  const adminLogout = () => {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    setAdminSession(null);
-  };
-
-  return { adminSession, isAdminAuthenticated, adminLogin, adminLogout };
 }
