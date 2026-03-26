@@ -201,7 +201,7 @@ export default function LandingPage({
               onClick={() => setShowSignup(true)}
               data-ocid="hero.secondary_button"
             >
-              Get Started Free
+              Get Started
             </Button>
           </div>
         </div>
@@ -268,7 +268,7 @@ export default function LandingPage({
                 icon: Zap,
                 title: "Fast Turnaround",
                 desc: "Production starts within 24 hours of advance payment. Most orders delivered within 7–10 working days.",
-                color: "bg-orange-50",
+                color: "bg-blue-50",
                 iconColor: "text-primary",
               },
             ].map(({ icon: Icon, title, desc, color, iconColor }) => (
@@ -420,7 +420,7 @@ export default function LandingPage({
               },
               {
                 label: "Custom Boxes",
-                color: "from-primary to-orange-600",
+                color: "from-primary to-blue-600",
                 emoji: "⚙️",
                 desc: "Any material, any spec",
               },
@@ -460,7 +460,7 @@ export default function LandingPage({
                 icon: Package,
                 title: "Submit Specs → Get Quote",
                 desc: "Share your box requirements. We collect competitive quotes from verified suppliers within 20 minutes.",
-                highlight: "Free to request",
+                highlight: "No upfront cost",
               },
               {
                 step: "2",
@@ -479,7 +479,7 @@ export default function LandingPage({
             ].map(({ step, icon: Icon, title, desc, highlight }) => (
               <div
                 key={step}
-                className="relative rounded-2xl border-2 border-primary/20 p-6 bg-gradient-to-b from-orange-50/50 to-white"
+                className="relative rounded-2xl border-2 border-primary/20 p-6 bg-gradient-to-b from-blue-50/50 to-white"
               >
                 <div className="absolute -top-3 left-6 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">
                   Step {step}
@@ -584,7 +584,7 @@ export default function LandingPage({
             onClick={() => setShowSignup(true)}
             data-ocid="cta.signup.button"
           >
-            Signup Free
+            Signup
           </Button>
           <Button
             size="lg"

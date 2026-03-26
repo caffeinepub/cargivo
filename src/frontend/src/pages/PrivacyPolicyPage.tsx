@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage({ navigate }: Props) {
             Back to Home
           </button>
           <img
-            src="/assets/uploads/image-4-1.png"
+            src="/assets/uploads/cargivo_logo_with_motion_trails-019d2b28-4cc6-7378-aae8-b18db2273b4e-1.png"
             alt="Cargivo"
             className="h-8 w-auto ml-auto"
           />
@@ -32,7 +32,7 @@ export default function PrivacyPolicyPage({ navigate }: Props) {
       <main className="max-w-3xl mx-auto px-4 py-12">
         <div className="bg-white rounded-2xl shadow-sm border border-border p-8 md:p-12">
           <div className="mb-8">
-            <span className="inline-block bg-orange-100 text-orange-600 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+            <span className="inline-block bg-blue-100 text-blue-600 text-xs font-semibold px-3 py-1 rounded-full mb-4">
               Legal
             </span>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -120,7 +120,7 @@ export default function PrivacyPolicyPage({ navigate }: Props) {
                 Email:{" "}
                 <a
                   href="mailto:support@cargivo.com"
-                  className="text-orange-500 hover:underline font-medium"
+                  className="text-primary hover:underline font-medium"
                 >
                   support@cargivo.com
                 </a>
@@ -138,7 +138,7 @@ export default function PrivacyPolicyPage({ navigate }: Props) {
             href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-orange-500 hover:underline"
+            className="text-primary hover:underline"
           >
             caffeine.ai
           </a>

@@ -20,40 +20,40 @@
 
 @layer base {
   :root {
-    /* Light theme - clean white + orange */
+    /* Light theme - blue primary + orange accent */
     --background: 0.99 0.002 90;
     --foreground: 0.18 0.02 255;
     --card: 1 0 0;
     --card-foreground: 0.18 0.02 255;
     --popover: 1 0 0;
     --popover-foreground: 0.18 0.02 255;
-    --primary: 0.68 0.21 44;
+    --primary: 0.45 0.22 264;
     --primary-foreground: 1 0 0;
     --secondary: 0.96 0.01 90;
     --secondary-foreground: 0.18 0.02 255;
     --muted: 0.95 0.01 90;
     --muted-foreground: 0.5 0.02 255;
-    --accent: 0.96 0.02 44;
-    --accent-foreground: 0.68 0.21 44;
+    --accent: 0.94 0.04 264;
+    --accent-foreground: 0.45 0.22 264;
     --destructive: 0.55 0.22 27;
     --destructive-foreground: 1 0 0;
     --border: 0.9 0.01 255;
     --input: 0.9 0.01 255;
-    --ring: 0.68 0.21 44;
+    --ring: 0.45 0.22 264;
     --radius: 0.625rem;
-    --chart-1: 0.68 0.21 44;
-    --chart-2: 0.6 0.18 200;
+    --chart-1: 0.45 0.22 264;
+    --chart-2: 0.65 0.22 42;
     --chart-3: 0.65 0.16 150;
     --chart-4: 0.55 0.18 310;
     --chart-5: 0.75 0.14 90;
     --sidebar: 0.18 0.04 255;
     --sidebar-foreground: 0.96 0.01 255;
-    --sidebar-primary: 0.68 0.21 44;
+    --sidebar-primary: 0.45 0.22 264;
     --sidebar-primary-foreground: 1 0 0;
     --sidebar-accent: 0.22 0.04 255;
     --sidebar-accent-foreground: 0.96 0.01 255;
     --sidebar-border: 0.28 0.04 255;
-    --sidebar-ring: 0.68 0.21 44;
+    --sidebar-ring: 0.45 0.22 264;
   }
 }
 
@@ -76,11 +76,11 @@
 }
 
 @layer utilities {
-  .text-gradient-orange {
+  .text-gradient-brand {
     background: linear-gradient(
       135deg,
-      oklch(0.68 0.21 44),
-      oklch(0.78 0.18 60)
+      oklch(0.45 0.22 264),
+      oklch(0.65 0.22 42)
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -89,12 +89,26 @@
   .hero-gradient {
     background: linear-gradient(
       135deg,
-      oklch(0.68 0.21 44) 0%,
-      oklch(0.78 0.18 55) 50%,
-      oklch(0.85 0.16 70) 100%
+      oklch(0.3 0.22 264) 0%,
+      oklch(0.4 0.22 264) 50%,
+      oklch(0.5 0.2 264) 100%
     );
   }
+  .glow-blue {
+    box-shadow: 0 0 40px oklch(0.45 0.22 264 / 0.25);
+  }
+  /* Keep legacy class names for backwards compat */
+  .text-gradient-orange {
+    background: linear-gradient(
+      135deg,
+      oklch(0.45 0.22 264),
+      oklch(0.65 0.22 42)
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
   .glow-orange {
-    box-shadow: 0 0 40px oklch(0.68 0.21 44 / 0.25);
+    box-shadow: 0 0 40px oklch(0.45 0.22 264 / 0.25);
   }
 }

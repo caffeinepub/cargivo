@@ -129,7 +129,7 @@ export default function LoginPage({
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <img
-              src="/assets/uploads/image-4-1.png"
+              src="/assets/uploads/cargivo_logo_with_motion_trails-019d2b28-4cc6-7378-aae8-b18db2273b4e-1.png"
               alt="Cargivo"
               className="h-16 w-auto mx-auto mb-4"
             />
