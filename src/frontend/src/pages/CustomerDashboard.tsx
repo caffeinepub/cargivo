@@ -1,5 +1,8 @@
 import type { NavigateFn } from "@/App";
 import type { CustomerProfile, QuoteRequest } from "@/backend.d";
+import OrderDetailModal, {
+  getEffectiveStatus,
+} from "@/components/OrderDetailModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +19,6 @@ import {
   Loader2,
   LogOut,
   Package,
-  ReceiptText,
   RefreshCw,
   RotateCcw,
   TrendingUp,
@@ -31,13 +33,81 @@ interface Props {
   emailCredentials: { email: string; password: string } | null;
 }
 
+const GST_STATE_MAP: Record<string, string> = {
+  "Jammu & Kashmir": "01",
+  "Himachal Pradesh": "02",
+  Punjab: "03",
+  Chandigarh: "04",
+  Uttarakhand: "05",
+  Haryana: "06",
+  Delhi: "07",
+  Rajasthan: "08",
+  "Uttar Pradesh": "09",
+  Bihar: "10",
+  Sikkim: "11",
+  "Arunachal Pradesh": "12",
+  Nagaland: "13",
+  Manipur: "14",
+  Mizoram: "15",
+  Tripura: "16",
+  Meghalaya: "17",
+  Assam: "18",
+  "West Bengal": "19",
+  Jharkhand: "20",
+  Odisha: "21",
+  Chhattisgarh: "22",
+  "Madhya Pradesh": "23",
+  Gujarat: "24",
+  "Dadra & Nagar Haveli and Daman & Diu": "26",
+  Maharashtra: "27",
+  Karnataka: "29",
+  Goa: "30",
+  Lakshadweep: "31",
+  Kerala: "32",
+  "Tamil Nadu": "33",
+  Puducherry: "34",
+  "Andaman & Nicobar Islands": "35",
+  Telangana: "36",
+  "Andhra Pradesh": "37",
+  Ladakh: "38",
+  "Other Territory": "97",
+  "Centre Jurisdiction": "99",
+};
+
+function formatReqId(
+  id: bigint,
+  createdAt: bigint,
+  deliveryLocation?: string,
+): string {
+  const ms = Number(createdAt / 1_000_000n);
+  const date = new Date(ms);
+  const year = date.getFullYear();
+  const seq = String(Number(id)).padStart(4, "0");
+  let stateCode = "00";
+  if (deliveryLocation) {
+    for (const [stateName, code] of Object.entries(GST_STATE_MAP)) {
+      if (deliveryLocation.includes(stateName)) {
+        stateCode = code;
+        break;
+      }
+    }
+  }
+  return `REQ/${year}/${stateCode}/${seq}`;
+}
+
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-800",
     quote_sent: "bg-blue-100 text-blue-800",
+    customer_accepted: "bg-emerald-100 text-emerald-800",
+    customer_declined: "bg-red-100 text-red-800",
+    advance_payment_pending: "bg-orange-100 text-orange-800",
+    order_preparing: "bg-purple-100 text-purple-800",
+    in_transit: "bg-indigo-100 text-indigo-800",
+    delivered: "bg-teal-100 text-teal-800",
+    completed: "bg-green-100 text-green-800",
     confirmed: "bg-green-100 text-green-800",
     manufacturing: "bg-purple-100 text-purple-800",
-    delivered: "bg-emerald-100 text-emerald-800",
     cancelled: "bg-red-100 text-red-800",
   };
   const cls = map[status] ?? "bg-gray-100 text-gray-800";
@@ -45,7 +115,7 @@ function statusBadge(status: string) {
     <span
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}
     >
-      {status.replace("_", " ")}
+      {status.replace(/_/g, " ")}
     </span>
   );
 }
@@ -72,8 +142,11 @@ export default function CustomerDashboard({
   const [city, setCity] = useState("");
   const [landmark, setLandmark] = useState("");
   const [building, setBuilding] = useState("");
+  const [selectedState, setSelectedState] = useState("");
+  const [pincode, setPincode] = useState("");
   const [hasSavedAddress, setHasSavedAddress] = useState(false);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<QuoteRequest | null>(null);
 
   const loadOrders = useCallback(async () => {
     if (!emailCredentials || !actor) return;
@@ -109,6 +182,8 @@ export default function CustomerDashboard({
         setCity(addr.city || "");
         setLandmark(addr.landmark || "");
         setBuilding(addr.building || "");
+        setSelectedState(addr.state || "");
+        setPincode(addr.pincode || "");
         setHasSavedAddress(true);
       } catch {}
     }
@@ -130,7 +205,7 @@ export default function CustomerDashboard({
       return;
     }
     setIsSubmitting(true);
-    const deliveryLocation = `${building}, ${landmark}, ${city}`;
+    const deliveryLocation = `${building}, ${landmark}, ${city}, ${selectedState}, ${pincode}`;
     try {
       await actor.submitQuoteRequestWithEmail(
         emailCredentials.email,
@@ -149,7 +224,13 @@ export default function CustomerDashboard({
       toast.success("Quote request submitted!");
       localStorage.setItem(
         "cargivo_saved_address",
-        JSON.stringify({ city, landmark, building }),
+        JSON.stringify({
+          city,
+          landmark,
+          building,
+          state: selectedState,
+          pincode,
+        }),
       );
       setBoxType("");
       setMaterial("");
@@ -160,6 +241,8 @@ export default function CustomerDashboard({
       setCity("");
       setLandmark("");
       setBuilding("");
+      setSelectedState("");
+      setPincode("");
       await loadOrders();
     } catch {
       toast.error("Failed to submit request");
@@ -170,6 +253,12 @@ export default function CustomerDashboard({
 
   const pendingCount = orders.filter((o) => o.status === "pending").length;
   const quoteSentCount = orders.filter((o) => o.status === "quote_sent").length;
+
+  const handleOrderStatusChange = () => {
+    if (selectedOrder) {
+      setSelectedOrder((prev) => (prev ? { ...prev } : null));
+    }
+  };
 
   return (
     <div className="min-h-screen bg-secondary/40">
@@ -244,7 +333,6 @@ export default function CustomerDashboard({
                         <SelectValue placeholder="Select box type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Metal">Metal</SelectItem>
                         <SelectItem value="Wooden">Wooden</SelectItem>
                         <SelectItem value="Plastic">Plastic</SelectItem>
                         <SelectItem value="Custom">Custom</SelectItem>
@@ -356,6 +444,42 @@ export default function CustomerDashboard({
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
+                      {/* Row 1: State full width */}
+                      <div className="col-span-2">
+                        <Label>State *</Label>
+                        <Select
+                          value={selectedState}
+                          onValueChange={setSelectedState}
+                        >
+                          <SelectTrigger
+                            className="mt-1"
+                            data-ocid="quote.state.select"
+                          >
+                            <SelectValue placeholder="Select state" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60 overflow-y-auto">
+                            {Object.keys(GST_STATE_MAP).map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {s}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Row 2: Pincode + City */}
+                      <div>
+                        <Label htmlFor="q-pincode">Pincode *</Label>
+                        <Input
+                          id="q-pincode"
+                          required
+                          value={pincode}
+                          onChange={(e) => setPincode(e.target.value)}
+                          placeholder="400001"
+                          maxLength={6}
+                          className="mt-1"
+                          data-ocid="quote.pincode.input"
+                        />
+                      </div>
                       <div>
                         <Label htmlFor="q-city">City *</Label>
                         <Input
@@ -364,28 +488,30 @@ export default function CustomerDashboard({
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
                           placeholder="Mumbai"
+                          className="mt-1"
                           data-ocid="quote.city.input"
                         />
                       </div>
+                      {/* Row 3: Landmark + Building */}
                       <div>
-                        <Label htmlFor="q-landmark">Landmark *</Label>
+                        <Label htmlFor="q-landmark">Landmark</Label>
                         <Input
                           id="q-landmark"
-                          required
                           value={landmark}
                           onChange={(e) => setLandmark(e.target.value)}
                           placeholder="Near Station"
+                          className="mt-1"
                           data-ocid="quote.landmark.input"
                         />
                       </div>
-                      <div className="col-span-2">
-                        <Label htmlFor="q-building">Building / Shop No *</Label>
+                      <div>
+                        <Label htmlFor="q-building">Building / Shop No</Label>
                         <Input
                           id="q-building"
-                          required
                           value={building}
                           onChange={(e) => setBuilding(e.target.value)}
                           placeholder="Shop 12, Andheri Plaza"
+                          className="mt-1"
                           data-ocid="quote.building.input"
                         />
                       </div>
@@ -451,60 +577,57 @@ export default function CustomerDashboard({
                     <p className="text-sm">No orders yet</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {orders.map((order, i) => (
-                      <div
-                        key={order.id.toString()}
-                        className="border border-border rounded-xl p-4"
-                        data-ocid={`quote.orders.item.${i + 1}`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className="text-sm font-semibold">
-                              REQ-{order.id.toString()}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {order.length}×{order.width}×{order.height} cm ·{" "}
-                              {order.boxType}
-                            </p>
+                  <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                    {orders.map((order, i) => {
+                      const effStatus = getEffectiveStatus(order);
+                      return (
+                        <button
+                          type="button"
+                          key={order.id.toString()}
+                          className="w-full text-left border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer"
+                          onClick={() => setSelectedOrder(order)}
+                          data-ocid={`quote.orders.item.${i + 1}`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <p className="text-sm font-semibold">
+                                {formatReqId(
+                                  order.id,
+                                  order.createdAt,
+                                  order.deliveryLocation,
+                                )}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {order.length}×{order.width}×{order.height} cm ·{" "}
+                                {order.boxType}
+                              </p>
+                            </div>
+                            {statusBadge(effStatus)}
                           </div>
-                          {statusBadge(order.status)}
-                        </div>
-                        <div className="flex gap-2 mt-3">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="text-xs h-7 gap-1"
-                            onClick={() => {
-                              setBoxType(order.boxType);
-                              setMaterial(order.material ?? "");
-                              setLength(order.length.toString());
-                              setWidth(order.width.toString());
-                              setHeight(order.height.toString());
-                              setQuantity(order.quantity.toString());
-                            }}
-                            data-ocid={`quote.orders.reorder.button.${i + 1}`}
-                          >
-                            <RotateCcw className="h-3 w-3" /> Reorder
-                          </Button>
-                          {(order.status === "quote_sent" ||
-                            order.status === "confirmed" ||
-                            order.status === "manufacturing" ||
-                            order.status === "delivered") && (
-                            <Button
+                          <div className="flex gap-2 mt-3">
+                            <button
                               type="button"
-                              size="sm"
-                              variant="outline"
-                              className="text-xs h-7 gap-1"
-                              data-ocid={`quote.orders.invoice.button.${i + 1}`}
+                              className="text-xs h-7 px-2 py-1 rounded border border-border hover:bg-secondary flex items-center gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBoxType(order.boxType);
+                                setMaterial(order.material ?? "");
+                                setLength(order.length.toString());
+                                setWidth(order.width.toString());
+                                setHeight(order.height.toString());
+                                setQuantity(order.quantity.toString());
+                              }}
+                              data-ocid={`quote.orders.reorder.button.${i + 1}`}
                             >
-                              <ReceiptText className="h-3 w-3" /> Invoice
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                              <RotateCcw className="h-3 w-3" /> Reorder
+                            </button>
+                            <span className="text-xs h-7 px-2 py-1 rounded bg-primary/10 text-primary flex items-center gap-1">
+                              View Details →
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -588,57 +711,60 @@ export default function CustomerDashboard({
                 >
                   <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>No orders yet. Submit your first quote request!</p>
-                  <Button
-                    type="button"
-                    className="mt-4 bg-primary text-primary-foreground"
-                    size="sm"
-                    onClick={() => setActiveTab("request")}
-                    data-ocid="dashboard.request.button"
-                  >
-                    Request a Quote
-                  </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {orders.map((order, i) => (
-                    <div
-                      key={order.id.toString()}
-                      className="flex items-center justify-between border border-border rounded-xl p-4"
-                      data-ocid={`dashboard.orders.item.${i + 1}`}
-                    >
-                      <div>
-                        <p className="font-semibold text-sm">
-                          REQ-{order.id.toString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {order.boxType} · {order.length}×{order.width}×
-                          {order.height} cm · Qty: {order.quantity.toString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {statusBadge(order.status)}
-                        {(order.status === "quote_sent" ||
-                          order.status === "confirmed" ||
-                          order.status === "delivered") && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="text-xs h-7"
-                            data-ocid={`dashboard.orders.invoice.button.${i + 1}`}
-                          >
-                            <ReceiptText className="h-3 w-3 mr-1" /> Invoice
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                  {orders.map((order, i) => {
+                    const effStatus = getEffectiveStatus(order);
+                    return (
+                      <button
+                        type="button"
+                        key={order.id.toString()}
+                        className="w-full text-left border border-border rounded-xl p-4 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                        onClick={() => setSelectedOrder(order)}
+                        data-ocid={`dashboard.orders.item.${i + 1}`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">
+                                {formatReqId(
+                                  order.id,
+                                  order.createdAt,
+                                  order.deliveryLocation,
+                                )}
+                              </span>
+                              {statusBadge(effStatus)}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {order.boxType} · {order.length}×{order.width}×
+                              {order.height} cm · Qty:{" "}
+                              {order.quantity.toString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {order.deliveryLocation}
+                            </p>
+                          </div>
+                          <span className="text-xs text-primary font-medium">
+                            View Details →
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
         )}
       </main>
+
+      {/* Order Detail Modal */}
+      <OrderDetailModal
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        onStatusChange={handleOrderStatusChange}
+      />
     </div>
   );
 }

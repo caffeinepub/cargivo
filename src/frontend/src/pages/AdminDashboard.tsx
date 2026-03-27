@@ -24,12 +24,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useActor } from "@/hooks/useActor";
 import {
+  CheckCircle2,
   FileText,
   Loader2,
   LogOut,
   RefreshCw,
   Settings,
   ShoppingCart,
+  Truck,
   Users,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -42,13 +44,28 @@ interface Props {
   adminPassword: string;
 }
 
+function formatReqId(id: bigint, createdAt: bigint): string {
+  const ms = Number(createdAt / 1_000_000n);
+  const date = new Date(ms);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const seq = String(Number(id)).padStart(4, "0");
+  return `REQ/${year}/${month}/${seq}`;
+}
+
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-800",
     quote_sent: "bg-blue-100 text-blue-800",
+    customer_accepted: "bg-emerald-100 text-emerald-800",
+    customer_declined: "bg-red-100 text-red-800",
+    advance_payment_pending: "bg-orange-100 text-orange-800",
+    order_preparing: "bg-purple-100 text-purple-800",
+    in_transit: "bg-indigo-100 text-indigo-800",
+    delivered: "bg-teal-100 text-teal-800",
+    completed: "bg-green-100 text-green-800",
     confirmed: "bg-green-100 text-green-800",
     manufacturing: "bg-purple-100 text-purple-800",
-    delivered: "bg-emerald-100 text-emerald-800",
     cancelled: "bg-red-100 text-red-800",
   };
   const cls = map[status] ?? "bg-gray-100 text-gray-800";
@@ -56,7 +73,7 @@ function statusBadge(status: string) {
     <span
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}
     >
-      {status.replace("_", " ")}
+      {status.replace(/_/g, " ")}
     </span>
   );
 }
@@ -78,6 +95,7 @@ export default function AdminDashboard({
   const [requestError, setRequestError] = useState("");
   const [customerError, setCustomerError] = useState("");
 
+  // Send quote dialog
   const [quotingRequest, setQuotingRequest] = useState<QuoteRequest | null>(
     null,
   );
@@ -87,6 +105,13 @@ export default function AdminDashboard({
   const [quoteNotes, setQuoteNotes] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [isSendingQuote, setIsSendingQuote] = useState(false);
+
+  // In-transit dialog
+  const [transitRequest, setTransitRequest] = useState<QuoteRequest | null>(
+    null,
+  );
+  const [deliveryDetails, setDeliveryDetails] = useState("");
+  const [isMarkingTransit, setIsMarkingTransit] = useState(false);
 
   const loadRequests = useCallback(async () => {
     if (!actor) return;
@@ -131,7 +156,7 @@ export default function AdminDashboard({
   const handleTabChange = (tab: typeof activeTab) => {
     setActiveTab(tab);
     if (tab === "customers") loadCustomers();
-    if (tab === "requests") loadRequests();
+    if (tab === "requests" || tab === "orders") loadRequests();
   };
 
   const handleSendQuote = async (e: React.FormEvent) => {
@@ -165,7 +190,77 @@ export default function AdminDashboard({
     if (!actor) return;
     try {
       await actor.markAdvancePaidAdmin(adminEmail, adminPassword, requestId);
-      toast.success("Marked as advance paid");
+      // Move to order_preparing status
+      await actor.updateRequestStatusAdmin(
+        adminEmail,
+        adminPassword,
+        requestId,
+        "order_preparing",
+      );
+      toast.success("Advance payment confirmed. Order moved to preparing!");
+      loadRequests();
+    } catch {
+      toast.error("Failed to update");
+    }
+  };
+
+  const handleMarkInTransit = async () => {
+    if (!transitRequest || !actor) return;
+    if (!deliveryDetails.trim()) {
+      toast.error("Please enter delivery details.");
+      return;
+    }
+    setIsMarkingTransit(true);
+    try {
+      // Store delivery details in adminNotes via order update
+      await actor.updateOrderStatusAdmin(adminEmail, adminPassword, {
+        requestId: transitRequest.id,
+        deliveryTrackingInfo: deliveryDetails,
+        manufacturingNotes: undefined,
+      });
+      await actor.updateRequestStatusAdmin(
+        adminEmail,
+        adminPassword,
+        transitRequest.id,
+        "in_transit",
+      );
+      toast.success("Order marked as in transit!");
+      setTransitRequest(null);
+      setDeliveryDetails("");
+      loadRequests();
+    } catch {
+      toast.error("Failed to update");
+    } finally {
+      setIsMarkingTransit(false);
+    }
+  };
+
+  const handleConfirmDelivered = async (requestId: bigint) => {
+    if (!actor) return;
+    try {
+      await actor.updateRequestStatusAdmin(
+        adminEmail,
+        adminPassword,
+        requestId,
+        "delivered",
+      );
+      toast.success("Order marked as delivered!");
+      loadRequests();
+    } catch {
+      toast.error("Failed to update");
+    }
+  };
+
+  const handleConfirmFinalPayment = async (requestId: bigint) => {
+    if (!actor) return;
+    try {
+      await actor.updateRequestStatusAdmin(
+        adminEmail,
+        adminPassword,
+        requestId,
+        "completed",
+      );
+      toast.success("Final payment confirmed. Order completed!");
       loadRequests();
     } catch {
       toast.error("Failed to update");
@@ -195,6 +290,93 @@ export default function AdminDashboard({
     { id: "orders" as const, label: "Orders", icon: ShoppingCart },
     { id: "settings" as const, label: "Settings", icon: Settings },
   ];
+
+  // Render action buttons per status for Orders tab
+  function renderOrderActions(req: QuoteRequest, i: number) {
+    const s = req.status;
+    if (s === "pending" || s === "quote_sent") {
+      return (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+            onClick={() => {
+              setQuotingRequest(req);
+              setBasePrice("");
+              setGstPercent("18");
+              setDeliveryCharge("");
+              setQuoteNotes("");
+              setValidUntil("");
+            }}
+            data-ocid={`admin.orders.send_quote.button.${i + 1}`}
+          >
+            Send Quote
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
+            onClick={() => handleMarkAdvancePaid(req.id)}
+            data-ocid={`admin.orders.advance_paid.button.${i + 1}`}
+          >
+            Confirm Advance Payment
+          </Button>
+        </div>
+      );
+    }
+    if (s === "order_preparing") {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1"
+          onClick={() => {
+            setTransitRequest(req);
+            setDeliveryDetails("");
+          }}
+          data-ocid={`admin.orders.in_transit.button.${i + 1}`}
+        >
+          <Truck className="h-3.5 w-3.5" /> Mark In Transit
+        </Button>
+      );
+    }
+    if (s === "in_transit") {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          className="bg-teal-600 hover:bg-teal-700 text-white text-xs"
+          onClick={() => handleConfirmDelivered(req.id)}
+          data-ocid={`admin.orders.delivered.button.${i + 1}`}
+        >
+          Confirm Delivered
+        </Button>
+      );
+    }
+    if (s === "delivered") {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          className="bg-green-600 hover:bg-green-700 text-white text-xs"
+          onClick={() => handleConfirmFinalPayment(req.id)}
+          data-ocid={`admin.orders.final_payment.button.${i + 1}`}
+        >
+          Confirm Final Payment
+        </Button>
+      );
+    }
+    if (s === "completed") {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+          <CheckCircle2 className="h-3.5 w-3.5" /> Order Complete
+        </span>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-secondary/40">
@@ -246,6 +428,7 @@ export default function AdminDashboard({
           ))}
         </div>
 
+        {/* Quote Requests Tab */}
         {activeTab === "requests" && (
           <div className="bg-white rounded-2xl border border-border shadow-xs p-6">
             <div className="flex items-center justify-between mb-5">
@@ -311,7 +494,7 @@ export default function AdminDashboard({
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-sm">
-                            REQ-{req.id.toString()}
+                            {formatReqId(req.id, req.createdAt)}
                           </span>
                           {statusBadge(req.status)}
                         </div>
@@ -327,35 +510,29 @@ export default function AdminDashboard({
                             Material: {req.material}
                           </p>
                         )}
+                        {req.status === "customer_declined" &&
+                          req.adminNotes && (
+                            <p className="text-xs text-red-600">
+                              Decline reason: {req.adminNotes}
+                            </p>
+                          )}
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
-                          onClick={() => {
-                            setQuotingRequest(req);
-                            setBasePrice("");
-                            setGstPercent("18");
-                            setDeliveryCharge("");
-                            setQuoteNotes("");
-                            setValidUntil("");
-                          }}
-                          data-ocid={`admin.requests.send_quote.button.${i + 1}`}
-                        >
-                          Send Quote
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          onClick={() => handleMarkAdvancePaid(req.id)}
-                          data-ocid={`admin.requests.advance_paid.button.${i + 1}`}
-                        >
-                          Mark Advance Paid
-                        </Button>
-                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+                        onClick={() => {
+                          setQuotingRequest(req);
+                          setBasePrice("");
+                          setGstPercent("18");
+                          setDeliveryCharge("");
+                          setQuoteNotes("");
+                          setValidUntil("");
+                        }}
+                        data-ocid={`admin.requests.send_quote.button.${i + 1}`}
+                      >
+                        Send Quote
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -364,6 +541,7 @@ export default function AdminDashboard({
           </div>
         )}
 
+        {/* Customers Tab */}
         {activeTab === "customers" && (
           <div className="bg-white rounded-2xl border border-border shadow-xs p-6">
             <div className="flex items-center justify-between mb-5">
@@ -434,6 +612,7 @@ export default function AdminDashboard({
           </div>
         )}
 
+        {/* Orders Tab */}
         {activeTab === "orders" && (
           <div className="bg-white rounded-2xl border border-border shadow-xs p-6">
             <div className="flex items-center justify-between mb-5">
@@ -452,7 +631,14 @@ export default function AdminDashboard({
                 Refresh
               </Button>
             </div>
-            {requests.length === 0 ? (
+            {loadingRequests ? (
+              <div
+                className="text-center py-12"
+                data-ocid="admin.orders.loading_state"
+              >
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+              </div>
+            ) : requests.length === 0 ? (
               <div
                 className="text-center py-12 text-muted-foreground"
                 data-ocid="admin.orders.empty_state"
@@ -469,28 +655,29 @@ export default function AdminDashboard({
                     data-ocid={`admin.orders.item.${i + 1}`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm">
-                            REQ-{req.id.toString()}
+                            {formatReqId(req.id, req.createdAt)}
                           </span>
                           {statusBadge(req.status)}
+                          {req.status === "order_preparing" && (
+                            <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                              Advance Confirmed
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {req.boxType} · {req.length}×{req.width}×{req.height}{" "}
                           cm · Qty: {req.quantity.toString()}
                         </p>
+                        <p className="text-xs text-muted-foreground">
+                          📍 {req.deliveryLocation}
+                        </p>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="text-xs"
-                        onClick={() => handleMarkAdvancePaid(req.id)}
-                        data-ocid={`admin.orders.advance_paid.button.${i + 1}`}
-                      >
-                        Mark Advance Paid
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        {renderOrderActions(req, i)}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -499,6 +686,7 @@ export default function AdminDashboard({
           </div>
         )}
 
+        {/* Settings Tab */}
         {activeTab === "settings" && (
           <div className="bg-white rounded-2xl border border-border shadow-xs p-6 max-w-lg">
             <h2 className="text-xl font-display font-bold mb-6">Settings</h2>
@@ -549,6 +737,7 @@ export default function AdminDashboard({
         )}
       </div>
 
+      {/* Send Quote Dialog */}
       <Dialog
         open={!!quotingRequest}
         onOpenChange={(open) => !open && setQuotingRequest(null)}
@@ -556,7 +745,10 @@ export default function AdminDashboard({
         <DialogContent className="max-w-md" data-ocid="admin.send_quote.modal">
           <DialogHeader>
             <DialogTitle className="font-display">
-              Send Quotation — REQ-{quotingRequest?.id.toString()}
+              Send Quotation &mdash;{" "}
+              {quotingRequest
+                ? formatReqId(quotingRequest.id, quotingRequest.createdAt)
+                : ""}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSendQuote} className="space-y-4">
@@ -642,6 +834,56 @@ export default function AdminDashboard({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* In-Transit Dialog */}
+      <Dialog
+        open={!!transitRequest}
+        onOpenChange={(open) => !open && setTransitRequest(null)}
+      >
+        <DialogContent className="max-w-sm" data-ocid="admin.transit.modal">
+          <DialogHeader>
+            <DialogTitle className="font-display">Mark In Transit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Enter delivery details (courier name, tracking number, etc.)
+            </p>
+            <div>
+              <Label htmlFor="delivery-details">Delivery Details *</Label>
+              <Textarea
+                id="delivery-details"
+                value={deliveryDetails}
+                onChange={(e) => setDeliveryDetails(e.target.value)}
+                placeholder="e.g. Delhivery AWB123456, estimated 3-5 days"
+                rows={3}
+                data-ocid="admin.transit.details.textarea"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTransitRequest(null)}
+              data-ocid="admin.transit.cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              disabled={isMarkingTransit}
+              onClick={handleMarkInTransit}
+              data-ocid="admin.transit.confirm_button"
+            >
+              {isMarkingTransit ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Confirm In Transit
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
