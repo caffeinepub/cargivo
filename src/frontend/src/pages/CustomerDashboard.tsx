@@ -1,5 +1,5 @@
 import type { NavigateFn } from "@/App";
-import type { CustomerProfile, QuoteRequest } from "@/backend.d";
+import type { CustomerProfile, Quotation, QuoteRequest } from "@/backend.d";
 import OrderDetailModal, {
   getEffectiveStatus,
 } from "@/components/OrderDetailModal";
@@ -131,6 +131,7 @@ export default function CustomerDashboard({
     "request",
   );
   const [orders, setOrders] = useState<QuoteRequest[]>([]);
+  const [quotations, setQuotations] = useState<Record<string, Quotation>>({});
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [boxType, setBoxType] = useState("");
@@ -157,6 +158,35 @@ export default function CustomerDashboard({
         emailCredentials.password,
       );
       setOrders(result);
+      // Load quotations for orders that have a price
+      const statusesWithQuote = [
+        "quote_sent",
+        "customer_accepted",
+        "advance_payment_pending",
+        "order_preparing",
+        "in_transit",
+        "delivered",
+        "completed",
+      ];
+      const relevant = result.filter((o: QuoteRequest) =>
+        statusesWithQuote.includes(o.status),
+      );
+      if (relevant.length > 0) {
+        const settled = await Promise.allSettled(
+          relevant.map((o: QuoteRequest) =>
+            actor
+              .getQuotation(o.id)
+              .then((q: Quotation | null) => ({ id: o.id.toString(), q })),
+          ),
+        );
+        const map: Record<string, Quotation> = {};
+        for (const r of settled) {
+          if (r.status === "fulfilled" && r.value.q) {
+            map[r.value.id] = r.value.q;
+          }
+        }
+        setQuotations(map);
+      }
     } catch {
       toast.error("Failed to load orders");
     } finally {
@@ -601,6 +631,17 @@ export default function CustomerDashboard({
                                 {order.length}×{order.width}×{order.height} cm ·{" "}
                                 {order.boxType}
                               </p>
+                              {quotations[order.id.toString()] && (
+                                <p className="text-xs font-semibold text-orange-600 mt-0.5">
+                                  ₹
+                                  {quotations[
+                                    order.id.toString()
+                                  ].totalPrice.toLocaleString("en-IN", {
+                                    minimumFractionDigits: 2,
+                                  })}{" "}
+                                  total
+                                </p>
+                              )}
                             </div>
                             {statusBadge(effStatus)}
                           </div>
@@ -744,6 +785,17 @@ export default function CustomerDashboard({
                             <p className="text-xs text-muted-foreground">
                               {order.deliveryLocation}
                             </p>
+                            {quotations[order.id.toString()] && (
+                              <p className="text-xs font-semibold text-orange-600 mt-0.5">
+                                ₹
+                                {quotations[
+                                  order.id.toString()
+                                ].totalPrice.toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                })}{" "}
+                                total
+                              </p>
+                            )}
                           </div>
                           <span className="text-xs text-primary font-medium">
                             View Details →

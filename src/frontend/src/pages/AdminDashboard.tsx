@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useActor } from "@/hooks/useActor";
 import {
   CheckCircle2,
+  Circle,
   FileText,
   Loader2,
   LogOut,
@@ -94,6 +95,9 @@ export default function AdminDashboard({
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [customerError, setCustomerError] = useState("");
+
+  // Order detail popup
+  const [selectedOrder, setSelectedOrder] = useState<QuoteRequest | null>(null);
 
   // Send quote dialog
   const [quotingRequest, setQuotingRequest] = useState<QuoteRequest | null>(
@@ -186,11 +190,27 @@ export default function AdminDashboard({
     }
   };
 
+  const handleMarkAccepted = async (requestId: bigint) => {
+    if (!actor) return;
+    try {
+      await actor.updateRequestStatusAdmin(
+        adminEmail,
+        adminPassword,
+        requestId,
+        "confirmed",
+      );
+      toast.success("Order marked as accepted!");
+      loadRequests();
+      setSelectedOrder(null);
+    } catch {
+      toast.error("Failed to update");
+    }
+  };
+
   const handleMarkAdvancePaid = async (requestId: bigint) => {
     if (!actor) return;
     try {
       await actor.markAdvancePaidAdmin(adminEmail, adminPassword, requestId);
-      // Move to order_preparing status
       await actor.updateRequestStatusAdmin(
         adminEmail,
         adminPassword,
@@ -199,6 +219,7 @@ export default function AdminDashboard({
       );
       toast.success("Advance payment confirmed. Order moved to preparing!");
       loadRequests();
+      setSelectedOrder(null);
     } catch {
       toast.error("Failed to update");
     }
@@ -212,7 +233,6 @@ export default function AdminDashboard({
     }
     setIsMarkingTransit(true);
     try {
-      // Store delivery details in adminNotes via order update
       await actor.updateOrderStatusAdmin(adminEmail, adminPassword, {
         requestId: transitRequest.id,
         deliveryTrackingInfo: deliveryDetails,
@@ -228,6 +248,7 @@ export default function AdminDashboard({
       setTransitRequest(null);
       setDeliveryDetails("");
       loadRequests();
+      setSelectedOrder(null);
     } catch {
       toast.error("Failed to update");
     } finally {
@@ -246,6 +267,7 @@ export default function AdminDashboard({
       );
       toast.success("Order marked as delivered!");
       loadRequests();
+      setSelectedOrder(null);
     } catch {
       toast.error("Failed to update");
     }
@@ -262,6 +284,7 @@ export default function AdminDashboard({
       );
       toast.success("Final payment confirmed. Order completed!");
       loadRequests();
+      setSelectedOrder(null);
     } catch {
       toast.error("Failed to update");
     }
@@ -291,7 +314,7 @@ export default function AdminDashboard({
     { id: "settings" as const, label: "Settings", icon: Settings },
   ];
 
-  // Render action buttons per status for Orders tab
+  // Render action buttons per status (used in list cards)
   function renderOrderActions(req: QuoteRequest, i: number) {
     const s = req.status;
     if (s === "pending" || s === "quote_sent") {
@@ -301,7 +324,8 @@ export default function AdminDashboard({
             type="button"
             size="sm"
             className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setQuotingRequest(req);
               setBasePrice("");
               setGstPercent("18");
@@ -313,17 +337,24 @@ export default function AdminDashboard({
           >
             Send Quote
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
-            onClick={() => handleMarkAdvancePaid(req.id)}
-            data-ocid={`admin.orders.advance_paid.button.${i + 1}`}
-          >
-            Confirm Advance Payment
-          </Button>
         </div>
+      );
+    }
+    if (s === "customer_accepted") {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleMarkAdvancePaid(req.id);
+          }}
+          data-ocid={`admin.orders.advance_paid.button.${i + 1}`}
+        >
+          Confirm Advance Payment
+        </Button>
       );
     }
     if (s === "order_preparing") {
@@ -332,7 +363,8 @@ export default function AdminDashboard({
           type="button"
           size="sm"
           className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1"
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             setTransitRequest(req);
             setDeliveryDetails("");
           }}
@@ -348,7 +380,10 @@ export default function AdminDashboard({
           type="button"
           size="sm"
           className="bg-teal-600 hover:bg-teal-700 text-white text-xs"
-          onClick={() => handleConfirmDelivered(req.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleConfirmDelivered(req.id);
+          }}
           data-ocid={`admin.orders.delivered.button.${i + 1}`}
         >
           Confirm Delivered
@@ -361,7 +396,10 @@ export default function AdminDashboard({
           type="button"
           size="sm"
           className="bg-green-600 hover:bg-green-700 text-white text-xs"
-          onClick={() => handleConfirmFinalPayment(req.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleConfirmFinalPayment(req.id);
+          }}
           data-ocid={`admin.orders.final_payment.button.${i + 1}`}
         >
           Confirm Final Payment
@@ -377,6 +415,408 @@ export default function AdminDashboard({
     }
     return null;
   }
+
+  // ── Order Detail Popup ────────────────────────────────────────────────────
+  function OrderDetailDialog() {
+    const req = selectedOrder;
+    if (!req) return null;
+
+    const quot =
+      (req as any).quotation && (req as any).quotation.length > 0
+        ? (req as any).quotation[0]
+        : null;
+    const total = quot
+      ? quot.basePrice +
+        (quot.basePrice * quot.gstPercent) / 100 +
+        quot.deliveryCharge
+      : 0;
+
+    const s = req.status;
+
+    // Determine step states
+    // Steps: 0=Accepted, 1=Submit Quotation, 2=Payment Received, 3=Preparing Order, 4=In Transit, 5=Delivered, 6=Completed
+    const statusOrder = [
+      "pending",
+      "confirmed",
+      "quote_sent",
+      "customer_accepted",
+      "advance_payment_pending",
+      "order_preparing",
+      "in_transit",
+      "delivered",
+      "completed",
+    ];
+    const currentIdx = statusOrder.indexOf(s);
+
+    // step done = its required status was passed
+    const stepDone = (requiredStatus: string) => {
+      const reqIdx = statusOrder.indexOf(requiredStatus);
+      return currentIdx > reqIdx;
+    };
+
+    const steps: {
+      label: string;
+      doneWhen: string; // status at which this step is considered done
+      activeWhen: string[]; // statuses at which the action button is shown
+      action: React.ReactNode;
+    }[] = [
+      {
+        label: "Accepted",
+        doneWhen: "confirmed",
+        activeWhen: ["pending"],
+        action: (
+          <Button
+            type="button"
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+            onClick={() => handleMarkAccepted(req.id)}
+            data-ocid="admin.order_detail.accepted.button"
+          >
+            Mark Accepted
+          </Button>
+        ),
+      },
+      {
+        label: "Submit Quotation",
+        doneWhen: "quote_sent",
+        activeWhen: ["pending", "confirmed", "quote_sent"],
+        action:
+          s === "quote_sent" ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full">
+              <CheckCircle2 className="h-3 w-3" /> Quotation Sent ✓
+            </span>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+              onClick={() => {
+                setQuotingRequest(req);
+                setBasePrice("");
+                setGstPercent("18");
+                setDeliveryCharge("");
+                setQuoteNotes("");
+                setValidUntil("");
+              }}
+              data-ocid="admin.order_detail.send_quote.button"
+            >
+              Send Quote
+            </Button>
+          ),
+      },
+      {
+        label: "Payment Received",
+        doneWhen: "order_preparing",
+        activeWhen: ["customer_accepted", "advance_payment_pending"],
+        action: (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
+            onClick={() => handleMarkAdvancePaid(req.id)}
+            data-ocid="admin.order_detail.payment_received.button"
+          >
+            Confirm Payment
+          </Button>
+        ),
+      },
+      {
+        label: "Preparing Order",
+        doneWhen: "in_transit",
+        activeWhen: ["order_preparing"],
+        action: (
+          <Button
+            type="button"
+            size="sm"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1"
+            onClick={() => {
+              setTransitRequest(req);
+              setDeliveryDetails("");
+            }}
+            data-ocid="admin.order_detail.in_transit.button"
+          >
+            <Truck className="h-3.5 w-3.5" /> Mark In Transit
+          </Button>
+        ),
+      },
+      {
+        label: "In Transit",
+        doneWhen: "delivered",
+        activeWhen: ["in_transit"],
+        action: (
+          <Button
+            type="button"
+            size="sm"
+            className="bg-teal-600 hover:bg-teal-700 text-white text-xs"
+            onClick={() => handleConfirmDelivered(req.id)}
+            data-ocid="admin.order_detail.delivered.button"
+          >
+            Confirm Delivered
+          </Button>
+        ),
+      },
+      {
+        label: "Delivered",
+        doneWhen: "completed",
+        activeWhen: ["delivered"],
+        action: (
+          <Button
+            type="button"
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white text-xs"
+            onClick={() => handleConfirmFinalPayment(req.id)}
+            data-ocid="admin.order_detail.final_payment.button"
+          >
+            Mark Completed
+          </Button>
+        ),
+      },
+      {
+        label: "Completed",
+        doneWhen: "completed",
+        activeWhen: ["completed"],
+        action: (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Order Complete
+          </span>
+        ),
+      },
+    ];
+
+    const isCancelled = s === "customer_declined" || s === "cancelled";
+
+    return (
+      <Dialog
+        open={!!selectedOrder}
+        onOpenChange={(open) => !open && setSelectedOrder(null)}
+      >
+        <DialogContent
+          className="max-w-2xl w-full p-0 overflow-hidden"
+          data-ocid="admin.order_detail.modal"
+        >
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-border">
+            <DialogTitle className="font-display text-lg flex items-center gap-3">
+              {formatReqId(req.id, req.createdAt)}
+              {statusBadge(req.status)}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[75vh] px-6 py-5 space-y-6">
+            {/* Box details */}
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                Box Details
+              </h3>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Type:</span>{" "}
+                  <span className="font-medium">{req.boxType}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Qty:</span>{" "}
+                  <span className="font-medium">{req.quantity.toString()}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Dimensions:</span>{" "}
+                  <span className="font-medium">
+                    {req.length} × {req.width} × {req.height} cm
+                  </span>
+                </div>
+                {req.material && (
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Material:</span>{" "}
+                    <span className="font-medium">{req.material}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Delivery */}
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                Delivery Location
+              </h3>
+              <p className="text-sm">📍 {req.deliveryLocation}</p>
+            </div>
+
+            {/* Quotation */}
+            {quot && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                  Quotation
+                </h3>
+                <div className="bg-blue-50 rounded-lg p-3 space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Base Price</span>
+                    <span>₹{quot.basePrice.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      GST ({quot.gstPercent}%)
+                    </span>
+                    <span>
+                      ₹{((quot.basePrice * quot.gstPercent) / 100).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Delivery</span>
+                    <span>₹{quot.deliveryCharge.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-blue-800 border-t border-blue-200 pt-1 mt-1">
+                    <span>Total</span>
+                    <span>₹{total.toFixed(2)}</span>
+                  </div>
+                  {quot.notes && (
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Note: {quot.notes}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Decline reason */}
+            {req.status === "customer_declined" && req.adminNotes && (
+              <div className="bg-red-50 rounded-lg p-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-red-600 mb-1">
+                  Decline Reason
+                </h3>
+                <p className="text-sm text-red-700">{req.adminNotes}</p>
+              </div>
+            )}
+
+            {/* ── Order Progress & Actions ── */}
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                Order Progress &amp; Actions
+              </h3>
+
+              {isCancelled ? (
+                <div className="flex items-center gap-3 py-3">
+                  <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <svg
+                      aria-hidden="true"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                    >
+                      <path
+                        d="M3 3l8 8M11 3l-8 8"
+                        stroke="#ef4444"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-semibold text-red-600">
+                    {s === "customer_declined"
+                      ? "Order Declined by Customer"
+                      : "Order Cancelled"}
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-0">
+                  {steps.map((step, i) => {
+                    const done =
+                      stepDone(step.doneWhen) ||
+                      (s === "completed" && step.label === "Completed");
+                    const active = step.activeWhen.includes(s);
+                    const waiting = !done && !active;
+
+                    return (
+                      <div key={step.label}>
+                        <div className="flex items-center gap-3 py-2.5">
+                          {/* Circle indicator */}
+                          <div className="flex-shrink-0">
+                            {done ? (
+                              <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+                                <svg
+                                  aria-hidden="true"
+                                  width="14"
+                                  height="14"
+                                  viewBox="0 0 14 14"
+                                  fill="none"
+                                >
+                                  <path
+                                    d="M2.5 7l3.5 3.5 5.5-6"
+                                    stroke="white"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              </div>
+                            ) : active ? (
+                              <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center">
+                                <div className="w-3 h-3 rounded-full bg-white" />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 rounded-full border-2 border-gray-200 bg-white flex items-center justify-center">
+                                <Circle className="h-3 w-3 text-gray-300" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Step label */}
+                          <span
+                            className={`text-sm font-medium flex-1 ${
+                              done
+                                ? "text-emerald-700"
+                                : active
+                                  ? "text-orange-700"
+                                  : "text-gray-400"
+                            }`}
+                          >
+                            {step.label}
+                          </span>
+
+                          {/* Action button or badge */}
+                          <div className="flex-shrink-0">
+                            {done ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                                <CheckCircle2 className="h-3 w-3" /> Done
+                              </span>
+                            ) : active ? (
+                              step.action
+                            ) : waiting &&
+                              step.label === "Submit Quotation" &&
+                              s === "quote_sent" ? (
+                              <span className="text-xs text-gray-400">
+                                Awaiting Customer
+                              </span>
+                            ) : waiting ? (
+                              <span className="text-xs text-gray-300">
+                                Waiting
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {/* Connector line between steps */}
+                        {i < steps.length - 1 && (
+                          <div
+                            className={`ml-4 w-0.5 h-4 ${
+                              stepDone(step.doneWhen) ||
+                              (s === "completed" && step.label === "Completed")
+                                ? "bg-emerald-300"
+                                : "bg-gray-100"
+                            }`}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-secondary/40">
@@ -471,7 +911,7 @@ export default function AdminDashboard({
                   }}
                   data-ocid="admin.requests.logout.button"
                 >
-                  Logout & Login Again
+                  Logout &amp; Login Again
                 </Button>
               </div>
             ) : requests.length === 0 ? (
@@ -485,9 +925,11 @@ export default function AdminDashboard({
             ) : (
               <div className="space-y-3">
                 {requests.map((req, i) => (
-                  <div
+                  <button
+                    type="button"
                     key={req.id.toString()}
-                    className="border border-border rounded-xl p-4"
+                    className="w-full text-left border border-border rounded-xl p-4 cursor-pointer hover:bg-accent/40 transition-colors"
+                    onClick={() => setSelectedOrder(req)}
                     data-ocid={`admin.requests.item.${i + 1}`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -517,24 +959,38 @@ export default function AdminDashboard({
                             </p>
                           )}
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
-                        onClick={() => {
-                          setQuotingRequest(req);
-                          setBasePrice("");
-                          setGstPercent("18");
-                          setDeliveryCharge("");
-                          setQuoteNotes("");
-                          setValidUntil("");
-                        }}
-                        data-ocid={`admin.requests.send_quote.button.${i + 1}`}
-                      >
-                        Send Quote
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {(req.status === "pending" ||
+                          req.status === "customer_declined") && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setQuotingRequest(req);
+                              setBasePrice("");
+                              setGstPercent("18");
+                              setDeliveryCharge("");
+                              setQuoteNotes("");
+                              setValidUntil("");
+                            }}
+                            data-ocid={`admin.requests.send_quote.button.${i + 1}`}
+                          >
+                            Send Quote
+                          </Button>
+                        )}
+                        {req.status === "quote_sent" && (
+                          <span className="text-xs text-blue-600 font-medium px-2 py-1 bg-blue-50 rounded">
+                            Quotation Sent ✓
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          View →
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -649,9 +1105,11 @@ export default function AdminDashboard({
             ) : (
               <div className="space-y-3">
                 {requests.map((req, i) => (
-                  <div
+                  <button
+                    type="button"
                     key={req.id.toString()}
-                    className="border border-border rounded-xl p-4"
+                    className="w-full text-left border border-border rounded-xl p-4 cursor-pointer hover:bg-accent/40 transition-colors"
+                    onClick={() => setSelectedOrder(req)}
                     data-ocid={`admin.orders.item.${i + 1}`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -675,11 +1133,19 @@ export default function AdminDashboard({
                           📍 {req.deliveryLocation}
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {renderOrderActions(req, i)}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          {renderOrderActions(req, i)}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          View →
+                        </span>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -736,6 +1202,9 @@ export default function AdminDashboard({
           </div>
         )}
       </div>
+
+      {/* Order Detail Popup */}
+      <OrderDetailDialog />
 
       {/* Send Quote Dialog */}
       <Dialog
