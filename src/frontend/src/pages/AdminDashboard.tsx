@@ -35,7 +35,7 @@ import {
   Truck,
   Users,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface Props {
@@ -98,6 +98,11 @@ export default function AdminDashboard({
 
   // Order detail popup
   const [selectedOrder, setSelectedOrder] = useState<QuoteRequest | null>(null);
+
+  // Email notifications toggle (stored in localStorage)
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(
+    () => localStorage.getItem("cargivo_email_notifications") === "true",
+  );
 
   // Send quote dialog
   const [quotingRequest, setQuotingRequest] = useState<QuoteRequest | null>(
@@ -204,6 +209,46 @@ export default function AdminDashboard({
       setSelectedOrder(null);
     } catch {
       toast.error("Failed to update");
+    }
+  };
+
+  const sendEmailNotification = (
+    type: "approved" | "declined",
+    customerEmail: string,
+    reqId: string,
+    reason?: string,
+  ) => {
+    if (localStorage.getItem("cargivo_email_notifications") !== "true") return;
+    console.log(
+      `[EMAIL] Would send ${type} notification to ${customerEmail} for order ${reqId}${reason ? ` — Reason: ${reason}` : ""}`,
+    );
+  };
+
+  const handleAdminDeclineOrder = async (
+    requestId: bigint,
+    reason: string,
+    customerEmail?: string,
+  ) => {
+    if (!actor) return;
+    try {
+      await actor.updateRequestStatusAdmin(
+        adminEmail,
+        adminPassword,
+        requestId,
+        "cancelled",
+      );
+      if (customerEmail)
+        sendEmailNotification(
+          "declined",
+          customerEmail,
+          String(requestId),
+          reason,
+        );
+      toast.success("Order declined.");
+      loadRequests();
+      setSelectedOrder(null);
+    } catch {
+      toast.error("Failed to decline order");
     }
   };
 
@@ -586,6 +631,82 @@ export default function AdminDashboard({
 
     const isCancelled = s === "customer_declined" || s === "cancelled";
 
+    function ApproveDeclineSection({ req }: { req: QuoteRequest }) {
+      const [showDeclineInput, setShowDeclineInput] = React.useState(false);
+      const [declineReason, setDeclineReason] = React.useState("");
+      return (
+        <div className="flex flex-col gap-3 bg-gray-50 border border-border rounded-xl p-4">
+          <p className="text-sm font-medium text-muted-foreground">
+            Order Action
+          </p>
+          <div className="flex gap-3 items-start flex-wrap">
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={async () => {
+                await handleMarkAccepted(req.id);
+                const email = (req as any).customerEmail || "";
+                if (email)
+                  sendEmailNotification("approved", email, String(req.id));
+              }}
+              data-ocid="admin.order.approve.button"
+            >
+              ✓ Approve Order
+            </Button>
+            {!showDeclineInput ? (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setShowDeclineInput(true)}
+                data-ocid="admin.order.decline.button"
+              >
+                ✕ Decline Order
+              </Button>
+            ) : (
+              <div className="flex flex-col gap-2 w-full">
+                <input
+                  type="text"
+                  placeholder="Reason for declining..."
+                  value={declineReason}
+                  onChange={(e) => setDeclineReason(e.target.value)}
+                  className="border border-border rounded-md px-3 py-1.5 text-sm w-full focus:outline-none focus:ring-2 focus:ring-destructive/40"
+                  data-ocid="admin.order.decline_reason.input"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={!declineReason.trim()}
+                    onClick={() => {
+                      const email = (req as any).customerEmail || "";
+                      handleAdminDeclineOrder(
+                        req.id,
+                        declineReason,
+                        email || undefined,
+                      );
+                    }}
+                    data-ocid="admin.order.decline_confirm.button"
+                  >
+                    Confirm Decline
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowDeclineInput(false);
+                      setDeclineReason("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <Dialog
         open={!!selectedOrder}
@@ -603,6 +724,10 @@ export default function AdminDashboard({
           </DialogHeader>
 
           <div className="overflow-y-auto max-h-[75vh] px-6 py-5 space-y-6">
+            {/* Approve / Decline buttons for pending orders */}
+            {s === "pending" && !isCancelled && (
+              <ApproveDeclineSection req={req} />
+            )}
             {/* Box details */}
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
@@ -1156,6 +1281,50 @@ export default function AdminDashboard({
         {activeTab === "settings" && (
           <div className="bg-white rounded-2xl border border-border shadow-xs p-6 max-w-lg">
             <h2 className="text-xl font-display font-bold mb-6">Settings</h2>
+
+            {/* Email Notifications Toggle */}
+            <div className="border border-blue-200 rounded-xl p-5 bg-blue-50 mb-5">
+              <h3 className="font-semibold text-blue-900 mb-1">
+                Email Notifications
+              </h3>
+              <p className="text-sm text-blue-700 mb-4">
+                Send approval/rejection emails to customers when orders are
+                actioned.
+              </p>
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-sm text-muted-foreground">Status:</span>
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${emailNotificationsEnabled ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-600"}`}
+                >
+                  {emailNotificationsEnabled ? "ON" : "OFF"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !emailNotificationsEnabled;
+                    setEmailNotificationsEnabled(next);
+                    localStorage.setItem(
+                      "cargivo_email_notifications",
+                      String(next),
+                    );
+                    toast.success(
+                      `Email notifications ${next ? "enabled" : "disabled"}`,
+                    );
+                  }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${emailNotificationsEnabled ? "bg-blue-600" : "bg-gray-300"}`}
+                  data-ocid="admin.settings.email_notifications.toggle"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${emailNotificationsEnabled ? "translate-x-6" : "translate-x-1"}`}
+                  />
+                </button>
+              </div>
+              <p className="text-xs text-blue-600">
+                Note: Actual email delivery requires a paid plan. Toggle ON to
+                enable when you upgrade.
+              </p>
+            </div>
+
             <div className="border border-destructive/30 rounded-xl p-5 bg-destructive/5">
               <h3 className="font-semibold text-destructive mb-2">
                 Delete All Data
